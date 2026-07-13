@@ -35,3 +35,7 @@ reactive.py
 viz.py
 gen_icon.py
 gen_deck_icon.py
+
+# profile avatar helpers (not part of the app)
+avatar.png
+avatar.jpg
