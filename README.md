@@ -17,6 +17,8 @@
 [![Telegram](https://img.shields.io/badge/Telegram-@universemusicrecords-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://t.me/universemusicrecords)
 [![© All rights reserved](https://img.shields.io/badge/©-All%20rights%20reserved-171225?style=flat-square)](#-автор-и-права--author--rights)
 
+🌍 **Русский** · [English](README.en.md) · [Українська](README.uk.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Français](README.fr.md)
+
 `Novation Launchpad` · `Stream Deck alternative` · `macro deck` · `MIDI controller` · `audio-reactive light show` · `Launchpad Mini MK3` · `Launchpad X` · `Launchpad Pro MK3`
 
 <br>
@@ -30,20 +32,6 @@
 </div>
 
 ---
-
-<details>
-<summary><b>🇬🇧 Read this in English</b></summary>
-
-**Launchpad Deck** is a free Stream-Deck-style controller **and** a 60+‑scene audio-reactive light show for the Novation Launchpad — one window, one `.exe`, no extra software, no subscription.
-
-- 🎛 **Macro deck** — map pads to launch apps, media & volume (incl. **per-app volume**), system mic mute (works in Discord), lock PC, clock, hotkeys, **OBS** control, and more.
-- 🎆 **Light show** — the pad reacts to your PC audio in real time: bass hits, hi-hats sparkle, drops flash. 60+ generative scenes.
-- 🖥 Editor ⇄ Preview grid, layout **profiles**, **6 languages**, Windows autostart, splash/close animations.
-- 🎹 Auto-detects the device: **Mini MK3 / X** (8×8) and **Pro MK3** (full **10×10**).
-
-Download `LaunchpadDeck.exe` from [Releases](../../releases/latest), plug in your Launchpad via USB, and run. That's it. See the tables below — they read the same in any language.
-
-</details>
 
 ## 📖 Содержание
 
