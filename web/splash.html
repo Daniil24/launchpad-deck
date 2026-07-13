@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Launchpad Deck</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#0b0b11;
+    font-family:"Segoe UI",system-ui,sans-serif;color:#f4f4fa}
+  #wrap{height:100vh;display:flex;align-items:center;justify-content:center}
+  .card{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px}
+  canvas{width:280px;height:220px}
+  .title{font-size:23px;font-weight:800;letter-spacing:.5px}
+  .sub{color:#8a8aa4;font-size:12px;margin-top:-4px}
+  .bar{width:250px;height:6px;background:#1e1e2b;border-radius:4px;overflow:hidden;margin-top:6px}
+  .bar i{display:block;height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#7c5cff,#9a82ff)}
+  .bar.hide{display:none}
+</style>
+</head>
+<body>
+<div id="wrap"><div class="card">
+  <canvas id="c" width="280" height="220"></canvas>
+  <div class="title" id="title">Launchpad Deck</div>
+  <div class="sub" id="sub">загрузка…</div>
+  <div class="bar" id="barWrap"><i id="bar"></i></div>
+</div></div>
+<script>
+const logo = new Image(); logo.src = 'logo.png';
+function bloom(canvas, seconds, mode, onDone, barEl){
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth || 280, cssH = canvas.clientHeight || 220;
+  canvas.width = cssW*dpr; canvas.height = cssH*dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const W=cssW,H=cssH,cx=W/2,cy=H/2-4, totalTicks=seconds*30, start=performance.now();
+  (function frame(now){
+    now = now||performance.now();
+    const t=(now-start)/1000*30, prog=Math.min(1,t/totalTicks), p=(mode==='in')?prog:(1-prog);
+    ctx.clearRect(0,0,W,H);
+    for(let i=0;i<12;i++){
+      const ang=(t*4+i*30)*Math.PI/180, orbit=26+58*p;
+      const px=cx+Math.cos(ang)*orbit, py=cy+Math.sin(ang)*orbit;
+      const hue=((t*3)+i*30)%360, rad=9+5*Math.sin(t/6+i);
+      ctx.beginPath(); ctx.fillStyle='hsl('+hue+' 72% 62%)'; ctx.arc(px,py,Math.max(1,rad),0,6.2832); ctx.fill();
+    }
+    ctx.beginPath(); ctx.fillStyle='#141420'; ctx.arc(cx,cy,34,0,6.2832); ctx.fill();
+    if(logo.complete && logo.naturalWidth) ctx.drawImage(logo,cx-30,cy-30,60,60);
+    if(barEl) barEl.style.width=Math.round(prog*100)+'%';
+    if(prog<1) requestAnimationFrame(frame); else if(onDone) onDone();
+  })(performance.now());
+}
+let startedIn=false, startedOut=false;
+async function tick(){
+  try{
+    const m = await window.pywebview.api.splash_mode();
+    if(m==='in' && !startedIn){
+      startedIn=true;
+      bloom(document.getElementById('c'),5,'in',()=>{ try{window.pywebview.api.splash_in_done();}catch(e){} }, document.getElementById('bar'));
+    } else if(m==='out' && !startedOut){
+      startedOut=true;
+      document.getElementById('title').textContent='Выключение';
+      document.getElementById('sub').textContent='остановка службы · освобождение порта';
+      document.getElementById('barWrap').classList.add('hide');
+      bloom(document.getElementById('c'),1.9,'out',()=>{ setTimeout(()=>{ try{window.pywebview.api.do_exit();}catch(e){} },150); });
+      return;   // stop polling once closing starts
+    }
+  }catch(e){}
+  setTimeout(tick, 200);
+}
+function boot(){ try{ window.pywebview.api.center_splash(); }catch(e){} tick(); }
+if(window.pywebview) boot(); else window.addEventListener('pywebviewready', boot);
+</script>
+</body>
+</html>

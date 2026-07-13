@@ -1,0 +1,37 @@
+# build / envs
+.venv/
+build/
+dist/
+dist_web/
+__pycache__/
+*.spec
+*.pyc
+*.exe
+
+# logs & runtime data
+*.log
+deck_config.json
+runtime_config.json
+settings.json
+tutorial_seen.txt
+profiles/
+plugins/
+
+# scratch / temp test scripts
+_*.py
+
+# dev prototypes / one-off scripts (not part of the shipped app)
+deck_gui.py
+launcher_gui.py
+decode_preview.py
+inspect_mid.py
+diag.py
+selftest.py
+listen.py
+listen2.py
+probe.py
+probe2.py
+reactive.py
+viz.py
+gen_icon.py
+gen_deck_icon.py

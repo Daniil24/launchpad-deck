@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launchpad Deck</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <img class="logo" src="logo.png" alt="">
+    <div>
+      <div class="title">Launchpad Deck</div>
+      <div class="subtitle" id="subtitle"></div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="tutBtn"><span class="em">❓</span><span id="tutBtnT"></span></button>
+  </div>
+
+  <div class="card statuscard" id="statusCard">
+    <div class="statusbar">
+      <span class="pulse" id="pulse"><span class="dot"></span></span>
+      <span class="txt" id="statusTxt"></span>
+    </div>
+    <div class="row">
+      <button class="btn green big wide startbtn" id="startBtn"></button>
+      <button class="btn big" id="stopBtn" style="width:132px"></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="btn acc big wide" id="lightBtn"><span class="em">🎆</span><span id="lightBtnT"></span></button>
+    <div class="hint" id="lightHint"></div>
+  </div>
+
+  <div class="card">
+    <div class="sec" id="profSec"></div>
+    <div class="row">
+      <select id="profSel" style="flex:1"></select>
+      <button class="btn green icon" id="profNew">＋</button>
+      <button class="btn icon" id="profRen">✎</button>
+      <button class="btn icon" id="profDel">🗑</button>
+    </div>
+    <div class="hint" id="profHint"></div>
+  </div>
+
+  <div class="card">
+    <div class="seg">
+      <button class="btn on" id="modeEditor"><span class="em">🎛</span><span id="editorT"></span></button>
+      <button class="btn" id="modePreview"><span class="em">👁</span><span id="previewT"></span></button>
+    </div>
+    <div class="gridcenter">
+      <div class="gridwrap"><div class="pgrid" id="pgrid"></div></div>
+    </div>
+    <div class="hint" style="text-align:center" id="editorHint"></div>
+    <div class="hint" style="text-align:center;color:var(--acc2)" id="ctlHint"></div>
+  </div>
+
+  <div class="card">
+    <div class="sec" id="lightSec"></div>
+    <div class="slider-row"><label id="sensT"></label><input type="range" id="sens" min="0.6" max="4" step="0.01"><span class="val" id="sensV"></span></div>
+    <div class="slider-row"><label id="gainT"></label><input type="range" id="gain" min="0.4" max="4" step="0.01"><span class="val" id="gainV"></span></div>
+    <div class="slider-row"><label id="brightT"></label><input type="range" id="bright" min="0.25" max="1.6" step="0.01"><span class="val" id="brightV"></span></div>
+    <div class="hint" id="lightSetHint" style="margin-bottom:12px"></div>
+    <div class="sec" id="sceneSec"></div>
+    <div class="grid2" style="margin-bottom:8px">
+      <button class="btn" id="scPrev"></button>
+      <button class="btn" id="scNext"></button>
+    </div>
+    <div class="grid3">
+      <button class="btn" id="scRandom"><span class="em">🎲</span><span id="scRandomT"></span></button>
+      <button class="btn" id="scPalette"><span class="em">🎨</span><span id="scPaletteT"></span></button>
+      <button class="btn" id="scAuto"><span class="em">🔄</span><span id="scAutoT"></span></button>
+    </div>
+    <div class="hint" id="sceneHint"></div>
+  </div>
+
+  <div class="card">
+    <div class="sub">
+      <div class="sub-h"><span class="em">🌍</span><span id="langSec"></span></div>
+      <select id="langSel"></select>
+    </div>
+    <div class="divider"></div>
+    <div class="sub">
+      <div class="sub-h"><span class="em">🚀</span><span id="autoSec"></span></div>
+      <label class="switch"><input type="checkbox" id="autoChk"><span class="track"></span><span id="autoSwitchT"></span></label>
+      <div class="note" id="autoHint"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="sub">
+      <div class="sub-h"><span class="em">🎥</span><span id="obsSec"></span></div>
+      <input type="password" id="obsPw">
+      <div class="note" id="obsHint"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="sub">
+      <div class="sub-h"><span class="em">🧩</span><span id="plugSec"></span></div>
+      <button class="btn wide" id="plugBtn"><span class="em">📂</span><span id="plugBtnT"></span></button>
+      <div class="note" id="plugHint"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="sub">
+      <div class="sub-h"><span class="em">❓</span><span id="tutSec"></span></div>
+      <button class="btn wide" id="tutAgain"><span class="em">❓</span><span id="tutAgainT"></span></button>
+    </div>
+  </div>
+
+  <div class="card accent">
+    <div class="row" style="margin-bottom:6px"><div class="title" style="font-size:15px;color:var(--acc2)">🎵 Universe Music Records</div><div class="spacer"></div><span class="pill" id="rightsBadge"></span></div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px" id="authorName"></div>
+    <div class="hint" id="authorRights" style="margin-bottom:12px"></div>
+    <div class="grid2">
+      <button class="btn big" style="background:#2aabee;color:#fff" id="tgBtn"><span class="em">✈️</span><span id="tgBtnT"></span></button>
+      <button class="btn big" id="mailBtn"><span class="em">✉️</span><span id="mailBtnT"></span></button>
+    </div>
+  </div>
+</div>
+
+<!-- pad edit modal -->
+<div class="overlay" id="padOverlay"><div class="modal">
+  <h3 id="padTitle"></h3><div class="msub" id="padSub"></div>
+  <div class="fld" id="fName"></div><input type="text" id="padLabel">
+  <div class="fld" id="fColor"></div>
+  <div class="row"><select id="padColor" style="flex:1"></select><div class="swatch" id="padSwatch"></div></div>
+  <div class="fld" id="fType"></div><select id="padType"></select>
+  <div class="fld" id="fParam"></div><input type="text" id="padParam" list="paramList"><datalist id="paramList"></datalist>
+  <div class="hint" id="padHint"></div>
+  <div class="bar">
+    <button class="btn green" id="padSave"></button>
+    <button class="btn icon" style="background:var(--red)" id="padDelete">🗑</button>
+    <button class="btn" id="padCancel"></button>
+  </div>
+</div></div>
+
+<!-- control-button info modal -->
+<div class="overlay" id="ctlOverlay"><div class="modal">
+  <div class="big-emoji" id="ctlGlyph" style="color:var(--acc2);font-weight:700"></div>
+  <div class="tut-title" id="ctlName"></div>
+  <div class="tut-body" id="ctlDesc"></div>
+  <div class="hint" style="text-align:center" id="ctlNote"></div>
+  <div class="bar"><button class="btn acc wide" id="ctlOk">OK</button></div>
+</div></div>
+
+<!-- tutorial modal -->
+<div class="overlay" id="tutOverlay"><div class="modal">
+  <div class="tut-illus" id="tutIllus"></div>
+  <div class="tut-title" id="tutTitle"></div>
+  <div class="tut-body" id="tutBody"></div>
+  <div class="tut-ex" id="tutEx"></div>
+  <div class="dots" id="tutDots"></div>
+  <div class="bar">
+    <button class="btn" id="tutBack"></button>
+    <button class="btn ghost" id="tutSkip"></button>
+    <button class="btn acc" style="flex:1.4" id="tutNext"></button>
+  </div>
+</div></div>
+
+<script src="app.js"></script>
+</body>
+</html>
