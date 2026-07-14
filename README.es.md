@@ -302,6 +302,18 @@ Punto de entrada — [`app_web.py`](app_web.py). Motor — [`deck.py`](deck.py) 
 
 ---
 
+## 💜 Apoyar el proyecto
+
+El proyecto es gratis. Si te ha servido, puedes apoyar al autor con cripto — **TON (Toncoin)**:
+
+```
+UQAK1sIJqPVn9ND8JTOEUlrBFyAiVU0j6IiiXczTM7YmX4CB
+```
+
+[**💎 Enviar TON →**](https://app.tonkeeper.com/transfer/UQAK1sIJqPVn9ND8JTOEUlrBFyAiVU0j6IiiXczTM7YmX4CB)
+
+---
+
 ## 👤 Autor y derechos
 
 **Autor:** Daniil Oskin · **Universe Music Records**

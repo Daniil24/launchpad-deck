@@ -302,6 +302,18 @@ python -m venv .venv
 
 ---
 
+## 💜 Підтримати проєкт
+
+Проєкт безкоштовний. Якщо він тобі допоміг — можна підтримати автора криптою **TON (Toncoin)**:
+
+```
+UQAK1sIJqPVn9ND8JTOEUlrBFyAiVU0j6IiiXczTM7YmX4CB
+```
+
+[**💎 Надіслати TON →**](https://app.tonkeeper.com/transfer/UQAK1sIJqPVn9ND8JTOEUlrBFyAiVU0j6IiiXczTM7YmX4CB)
+
+---
+
 ## 👤 Автор і права
 
 **Автор:** Оськін Даниїл Андрійович · **Universe Music Records**
