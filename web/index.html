@@ -8,6 +8,12 @@
 </head>
 <body>
 <div id="app">
+  <div id="updateBar" style="display:none">
+    <span class="em">🚀</span><span id="updateText"></span>
+    <span class="spacer"></span>
+    <button class="btn small" id="updateDl"></button>
+    <button class="btn small ghost" id="updateLater"></button>
+  </div>
   <div class="header">
     <img class="logo" src="logo.png" alt="">
     <div>
@@ -62,6 +68,8 @@
     <div class="slider-row"><label id="sensT"></label><input type="range" id="sens" min="0.6" max="4" step="0.01"><span class="val" id="sensV"></span></div>
     <div class="slider-row"><label id="gainT"></label><input type="range" id="gain" min="0.4" max="4" step="0.01"><span class="val" id="gainV"></span></div>
     <div class="slider-row"><label id="brightT"></label><input type="range" id="bright" min="0.25" max="1.6" step="0.01"><span class="val" id="brightV"></span></div>
+    <div class="slider-row"><label id="bassT"></label><input type="range" id="bass" min="0.3" max="3" step="0.01"><span class="val" id="bassV"></span></div>
+    <div class="slider-row"><label id="trebleT"></label><input type="range" id="treble" min="0.3" max="3" step="0.01"><span class="val" id="trebleV"></span></div>
     <div class="hint" id="lightSetHint" style="margin-bottom:12px"></div>
     <div class="sec" id="sceneSec"></div>
     <div class="grid2" style="margin-bottom:8px">
@@ -115,6 +123,18 @@
       <button class="btn big" id="mailBtn"><span class="em">✉️</span><span id="mailBtnT"></span></button>
     </div>
   </div>
+
+  <div class="card support-card">
+    <div class="sec" id="supTitle"></div>
+    <div class="hint" id="supDesc" style="margin-bottom:10px"></div>
+    <div class="ton-row">
+      <code id="tonAddr"></code>
+      <button class="btn ghost small" id="copyTon"></button>
+    </div>
+    <button class="btn acc big wide" id="sendTon" style="margin-top:8px"><span class="em">💎</span><span id="sendTonT"></span></button>
+  </div>
+
+  <div class="tip" id="verTip"></div>
 </div>
 
 <!-- pad edit modal -->

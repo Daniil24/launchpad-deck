@@ -658,6 +658,7 @@ class LightEngine:
         self.rec = self.rec_cm.__enter__()
         self.cfg = cfg if cfg is not None else {"sens": 1.85, "gain": 1.25, "bright": 1.0}
         self.cfg.setdefault("sens", 1.85); self.cfg.setdefault("gain", 1.25); self.cfg.setdefault("bright", 1.0)
+        self.cfg.setdefault("bass", 1.0); self.cfg.setdefault("treble", 1.0)
         self.effects = [E() for E in LS.GEN_EFFECTS]     # generative modes only (no clips)
         try:                                             # + user plugins (custom light effects)
             plugdir = os.path.join(os.path.dirname(CONFIG) or HERE, "plugins")
@@ -712,8 +713,8 @@ class LightEngine:
         self.bass_max = max(self.bass_max * 0.999, e_bass, 1e-6)
         self.mid_max = max(self.mid_max * 0.999, e_mid, 1e-6)
         self.treb_max = max(self.treb_max * 0.999, e_treb, 1e-6)
-        bass_lvl = min(e_bass / self.bass_max, 1.0)
-        treb_lvl = min(e_treb / self.treb_max, 1.0)
+        bass_lvl = min(e_bass / self.bass_max * self.cfg.get("bass", 1.0), 1.0)
+        treb_lvl = min(e_treb / self.treb_max * self.cfg.get("treble", 1.0), 1.0)
 
         self.bass_hist.append(e_bass); self.since_beat += 1
         beat = (len(self.bass_hist) > 10

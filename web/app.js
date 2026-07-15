@@ -30,6 +30,7 @@ function applyStrings(){
   tset('editorT','editor'); tset('previewT','preview');
   tset('editorHint','editor_hint'); tset('ctlHint','grid_ctl_hint');
   tset('lightSec','light_settings'); tset('sensT','sens'); tset('gainT','gain'); tset('brightT','bright');
+  tset('bassT','bass'); tset('trebleT','treble');
   tset('lightSetHint','light_settings_hint');
   tset('sceneSec','scene_ctrl'); $('scPrev').textContent=S.scene_prev; $('scNext').textContent=S.scene_next;
   tset('scRandomT','scene_random'); tset('scPaletteT','scene_palette'); tset('scAutoT','scene_auto');
@@ -44,6 +45,12 @@ function applyStrings(){
   tset('fName','f_name'); tset('fColor','f_color'); tset('fType','f_type'); tset('fParam','f_param');
   $('padSave').textContent = S.save; $('padCancel').textContent = S.cancel;
   $('tutBack').textContent = S.tut_back; $('tutSkip').textContent = S.tut_skip;
+  // support (TON) + version
+  tset('supTitle','sup_title'); tset('supDesc','sup_desc');
+  $('copyTon').textContent = S.copy; tset('sendTonT','send_ton');
+  $('tonAddr').textContent = M.ton_address || '';
+  $('updateDl').textContent = S.download; $('updateLater').textContent = S.later;
+  $('verTip').textContent = (S.ver_label || 'v') + ' ' + (M.version || '');
 }
 
 function buildSelects(){
@@ -219,7 +226,24 @@ async function pollState(){
   $('startBtn').textContent = run?('⟳  '+S.restart):('▶  '+S.start);
   $('stopBtn').textContent = '■  '+S.stop;
   $('autoChk').checked = ST.autostart;
+  if (ST.show_req) api().show_main();
+  applyUpdate(ST.update);
   syncProfiles();
+}
+let _updShown = false;
+function applyUpdate(u){
+  const bar = $('updateBar');
+  if (u && !u.dismissed){
+    if (!_updShown){
+      _updShown = true;
+      $('updateText').textContent = S.upd_text + '  ·  v' + u.version;
+      bar.style.display = 'flex';
+      $('updateDl').onclick = ()=>api().open_url(u.url);
+      $('updateLater').onclick = ()=>{ u.dismissed = true; bar.style.display = 'none'; };
+    }
+  } else if (!u){
+    bar.style.display = 'none';
+  }
 }
 function syncProfiles(){
   const sel = $('profSel');
@@ -244,6 +268,7 @@ function bind(){
   $('modeEditor').onclick = ()=>setMode('editor');
   $('modePreview').onclick = ()=>setMode('preview');
   setSlider('sens','sens'); setSlider('gain','gain'); setSlider('bright','bright');
+  setSlider('bass','bass'); setSlider('treble','treble');
   $('scPrev').onclick = ()=>api().light_cmd('prev_scene');
   $('scNext').onclick = ()=>api().light_cmd('next_scene');
   $('scRandom').onclick = ()=>api().light_cmd('random_scene');
@@ -262,6 +287,12 @@ function bind(){
   $('plugBtn').onclick = ()=>api().open_plugins();
   $('tgBtn').onclick = ()=>api().open_url('https://t.me/universemusicrecords');
   $('mailBtn').onclick = ()=>api().open_url('mailto:doskin50@gmail.com');
+  $('copyTon').onclick = async ()=>{
+    try{ await navigator.clipboard.writeText(M.ton_address); }catch(e){}
+    $('copyTon').textContent = S.copied;
+    setTimeout(()=>{ $('copyTon').textContent = S.copy; }, 1400);
+  };
+  $('sendTon').onclick = ()=>api().open_url(M.ton_link);
   $('profNew').onclick = async ()=>{ const n = prompt(S.prof_name_q); if(n){ ST = await api().new_profile(n); renderEditor(); syncProfiles(); } };
   $('profRen').onclick = async ()=>{ const n = prompt(S.prof_name_q, ST.active); if(n){ ST = await api().rename_profile(n); syncProfiles(); } };
   $('profDel').onclick = async ()=>{ ST = await api().delete_profile(); renderEditor(); syncProfiles(); };

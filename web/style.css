@@ -209,3 +209,16 @@ input::placeholder{color:var(--mut)}
 .sp-sub{color:var(--sub);font-size:12px;margin-top:-4px}
 .sp-bar{width:250px;height:6px;background:#1e1e2b;border-radius:4px;overflow:hidden;margin-top:6px}
 .sp-bar i{display:block;height:100%;width:0;border-radius:4px;background:linear-gradient(90deg,#7c5cff,#9a82ff)}
+
+/* --- update banner + TON support (v1.1) --- */
+.btn.small{padding:8px 13px;font-size:12.5px;border-radius:10px}
+#updateBar{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#241b4d,#2c2352);
+  border:1px solid var(--acc);border-radius:14px;padding:11px 15px;margin-bottom:16px}
+#updateBar .spacer{flex:1}
+#updateText{font-size:13px;font-weight:600;color:#e8e4ff}
+.support-card{background:#171225;border:2px solid var(--acc)}
+.ton-row{display:flex;align-items:center;gap:10px;background:#0f0f17;border:1px solid var(--edge);
+  border-radius:12px;padding:10px 13px}
+.ton-row code{flex:1;font-family:"Consolas",monospace;font-size:12px;color:#cfc7ff;
+  word-break:break-all;line-height:1.5}
+.tip{font-size:11px;color:var(--mut);text-align:center;margin:2px 0 20px}
