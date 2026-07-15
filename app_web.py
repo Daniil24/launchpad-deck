@@ -41,7 +41,7 @@ AUTO_LNK = os.path.join(STARTUP, "Launchpad Deck.lnk")
 CREATE_NO_WINDOW = 0x08000000
 N = 8
 
-VERSION = "1.3"
+VERSION = "1.4"
 GITHUB_REPO = "Daniil24/launchpad-deck"
 TON_ADDRESS = "UQAK1sIJqPVn9ND8JTOEUlrBFyAiVU0j6IiiXczTM7YmX4CB"
 TON_LINK = "https://app.tonkeeper.com/transfer/" + TON_ADDRESS
@@ -81,6 +81,25 @@ LP_PRESETS = {
         "2,0": {"label": "Блок ПК", "color": "yellow", "type": "lock", "param": ""},
         "7,0": {"label": "Свет", "color": "purple", "type": "lightshow", "param": ""},
     },
+    "Стрим (OBS)": {
+        "0,7": {"label": "Сцена 1", "color": "purple", "type": "obs", "param": "scene:1"},
+        "1,7": {"label": "Сцена 2", "color": "purple", "type": "obs", "param": "scene:2"},
+        "2,7": {"label": "Сцена 3", "color": "purple", "type": "obs", "param": "scene:3"},
+        "3,7": {"label": "Запись", "color": "red", "type": "obs", "param": "record"},
+        "4,7": {"label": "Эфир", "color": "red", "type": "obs", "param": "stream"},
+        "5,7": {"label": "Повтор", "color": "orange", "type": "obs", "param": "replay"},
+        "6,7": {"label": "Вирт-камера", "color": "cyan", "type": "obs", "param": "virtualcam"},
+        "0,5": {"label": "Мут микро", "color": "red", "type": "obs", "param": "mute:Mic/Aux"},
+        "1,5": {"label": "Мут звука", "color": "red", "type": "obs", "param": "mute:Desktop Audio"},
+        "2,5": {"label": "Мут звука ПК", "color": "orange", "type": "sysmute", "param": ""},
+        "0,0": {"label": "Свет", "color": "purple", "type": "lightshow", "param": ""},
+        "1,0": {"label": "Часы", "color": "cyan", "type": "clock", "param": ""},
+    },
+}
+
+# previous shipped preset bodies — used to auto-upgrade a seeded profile ONLY if the
+# user hasn't modified it (byte-identical to what we shipped), so their edits are never lost.
+LP_PRESETS_OLD = {
     "Стрим (OBS)": {
         "0,7": {"label": "Сцена 1", "color": "purple", "type": "obs", "param": "scene:Scene 1"},
         "1,7": {"label": "Сцена 2", "color": "purple", "type": "obs", "param": "scene:Scene 2"},
@@ -230,18 +249,36 @@ def save_profile(name):
 
 
 def ensure_profiles():
+    global layout
     os.makedirs(PROF_DIR, exist_ok=True)
     if not list_profiles():
         save_profile(active_profile())
     # seed ready-made profiles (Work / Games / OBS) — don't overwrite user edits
     for name, lay in LP_PRESETS.items():
         p = _prof_path(name)
+        write = False
         if not os.path.exists(p):
+            write = True
+        elif name in LP_PRESETS_OLD:              # auto-upgrade ONLY if still the untouched old preset
+            try:
+                with open(p, encoding="utf-8") as f:
+                    cur = json.load(f)
+                if cur == LP_PRESETS_OLD[name]:
+                    write = True
+            except Exception:
+                pass
+        if write:
             try:
                 with open(p, "w", encoding="utf-8") as f:
                     json.dump(lay, f, ensure_ascii=False, indent=2)
             except Exception:
                 pass
+    # seamless live-layout upgrade: if the active profile is a preset whose live
+    # layout is still the untouched old version, refresh it to the new preset
+    act = active_profile()
+    if act in LP_PRESETS and act in LP_PRESETS_OLD and layout == LP_PRESETS_OLD[act]:
+        layout = json.loads(json.dumps(LP_PRESETS[act]))
+        save_config()
 
 
 def _newer(a, b):

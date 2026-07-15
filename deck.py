@@ -513,7 +513,17 @@ def _obsws_client():
 def _obsws_action(cmd, arg):
     cl = _obsws_client()
     if cmd == "scene" and arg:
-        cl.set_current_program_scene(arg)
+        name = arg
+        if arg.isdigit():                         # "scene:2" -> the 2nd scene in OBS's list
+            try:
+                scenes = cl.get_scene_list().scenes
+                names = [s.get("sceneName") for s in scenes][::-1]   # OBS lists bottom-up
+                i = int(arg) - 1
+                if 0 <= i < len(names):
+                    name = names[i]
+            except Exception:
+                pass
+        cl.set_current_program_scene(name)
     elif cmd == "record":
         cl.toggle_record()
     elif cmd == "stream":
@@ -620,6 +630,22 @@ class _SlobsPipe:
         self.h = None
 
 
+_SL_VCAM = [False]                                # local virtual-cam toggle state
+
+
+def _slobs_pick_scene(scenes, arg):
+    if arg.isdigit():                             # "scene:1" -> the 1st scene (order as in Streamlabs)
+        i = int(arg) - 1
+        return scenes[i].get("id") if 0 <= i < len(scenes) else None
+    for s in scenes:                              # exact name
+        if (s.get("name") or "").lower() == arg.lower():
+            return s.get("id")
+    for s in scenes:                              # partial name
+        if arg.lower() in (s.get("name") or "").lower():
+            return s.get("id")
+    return None
+
+
 def _slobs_action(cmd, arg):
     p = _SlobsPipe()
     if not p.open():
@@ -627,13 +653,12 @@ def _slobs_action(cmd, arg):
     try:
         if cmd == "scene" and arg:
             scenes = p.request("getScenes", "ScenesService") or []
-            sid = next((s.get("id") for s in scenes
-                        if (s.get("name") or "").lower() == arg.lower()), None)
-            if sid is None:
-                sid = next((s.get("id") for s in scenes
-                            if arg.lower() in (s.get("name") or "").lower()), None)
+            sid = _slobs_pick_scene(scenes, arg)
             if sid:
                 p.request("makeSceneActive", "ScenesService", sid)
+            else:
+                log("[deck] SLOBS scene '%s' not found. Есть сцены: %s"
+                    % (arg, ", ".join(repr(s.get("name")) for s in scenes)))
         elif cmd == "record":
             p.request("toggleRecording", "StreamingService")
         elif cmd == "stream":
@@ -642,17 +667,66 @@ def _slobs_action(cmd, arg):
             p.request("toggleRecording", "StreamingService")   # SLOBS has no separate pause
         elif cmd == "mute" and arg:
             srcs = p.request("getSources", "AudioService") or []
-            src = next((s for s in srcs if (s.get("name") or "").lower() == arg.lower()), None)
+            src = None
+            if arg.isdigit():
+                i = int(arg) - 1
+                src = srcs[i] if 0 <= i < len(srcs) else None
+            if src is None:
+                src = next((s for s in srcs if (s.get("name") or "").lower() == arg.lower()), None)
             if src is None:
                 src = next((s for s in srcs if arg.lower() in (s.get("name") or "").lower()), None)
-            if src and src.get("resourceId"):
-                p.request("setMuted", src["resourceId"], not bool(src.get("muted")))
+            if src:
+                want = not bool(src.get("muted"))
+                rid = src.get("resourceId")
+                sid = src.get("sourceId") or src.get("id")
+                done = False
+                if rid:                            # AudioSource.setMuted(bool) via its resourceId
+                    r = p.request("setMuted", rid, want)
+                    done = r is not None
+                if not done and sid:               # fallback: AudioService.setMuted(sourceId, bool)
+                    p.request("setMuted", "AudioService", sid, want)
+            else:
+                log("[deck] SLOBS audio '%s' not found. Есть источники: %s"
+                    % (arg, ", ".join(repr(s.get("name")) for s in srcs)))
         elif cmd in ("replay", "save_replay"):
             p.request("saveReplay", "StreamingService")
         elif cmd == "virtualcam":
-            pass                                   # not exposed by the SLOBS API
+            _SL_VCAM[0] = not _SL_VCAM[0]
+            p.request("start" if _SL_VCAM[0] else "stop", "VirtualWebcamService")
     finally:
         p.close()
+
+
+def _slobs_report():
+    """Dump the user's Streamlabs scenes + audio sources to a text file for diagnostics."""
+    p = _SlobsPipe()
+    if not p.open():
+        return None
+    try:
+        scenes = p.request("getScenes", "ScenesService") or []
+        srcs = p.request("getSources", "AudioService") or []
+        model = p.request("getModel", "StreamingService") or {}
+    finally:
+        p.close()
+    lines = ["Streamlabs Desktop — найденные объекты", "", "СЦЕНЫ (для пэда: scene:НОМЕР или scene:Имя):"]
+    for i, s in enumerate(scenes, 1):
+        lines.append("  %d) %s" % (i, s.get("name")))
+    lines.append("")
+    lines.append("АУДИО-ИСТОЧНИКИ (для пэда: mute:Имя или mute:НОМЕР):")
+    for i, s in enumerate(srcs, 1):
+        lines.append("  %d) %r  muted=%s  (sourceId=%s, resourceId=%s)"
+                     % (i, s.get("name"), s.get("muted"), s.get("sourceId"), s.get("resourceId")))
+    lines.append("")
+    lines.append("StreamingService.getModel: %s" % json.dumps(model, ensure_ascii=False))
+    txt = "\n".join(lines)
+    try:
+        path = os.path.join(os.path.dirname(CONFIG) or HERE, "streamlabs_report.txt")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(txt)
+    except Exception:
+        path = None
+    return {"path": path, "scenes": [s.get("name") for s in scenes],
+            "sources": [s.get("name") for s in srcs]}
 
 
 def _do_obs_action(spec):
@@ -711,7 +785,11 @@ def _obs_test_inner():
                 if scenes is None:
                     raise OSError("no reply from Streamlabs pipe")
                 _OBS_LAST["backend"] = "streamlabs"
-                return True, "Streamlabs", "Streamlabs Desktop"
+                rep = _slobs_report()
+                msg = "Streamlabs Desktop"
+                if rep and rep.get("scenes"):
+                    msg += " · сцены: " + ", ".join(str(s) for s in rep["scenes"][:6])
+                return True, "Streamlabs", msg
         except Exception as e:
             if b == "obs":
                 _OBS["cl"] = None
