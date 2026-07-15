@@ -222,3 +222,10 @@ input::placeholder{color:var(--mut)}
 .ton-row code{flex:1;font-family:"Consolas",monospace;font-size:12px;color:#cfc7ff;
   word-break:break-all;line-height:1.5}
 .tip{font-size:11px;color:var(--mut);text-align:center;margin:2px 0 20px}
+
+/* OBS backend selector + test result (v1.2) */
+.fld2{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:.3px;margin-bottom:6px}
+.obs-res{flex:1;font-size:12px;font-weight:600;line-height:1.4;align-self:center}
+.obs-res.ok{color:var(--green2)}
+.obs-res.err{color:var(--red)}
+.obs-res.wait{color:var(--acc2)}
