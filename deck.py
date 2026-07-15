@@ -1097,23 +1097,23 @@ class LightEngine:
                 fb[0, cc] = hcol if cc < n else dim
         return np.clip(fb, 0, 1)
 
-    def border_colors(self):
-        """Colours for the outer buttons (top row + right column) so they glow
-        with the music while the 8×8 grid stays the main canvas. Returns
-        {led_index: (r,g,b) in 0..1}. Harmless on devices without those LEDs."""
-        c = self.ctx
-        strip = RIGHT_COL + TOP_ROW[::-1]                 # continuous path: bottom-right -> up -> across top
-        n = len(strip)
-        base = 0.10 + 0.45 * c.energy + 0.9 * self.bass_kick
-        bright = self.cfg.get("bright", 1.0)
+    def border_colors(self, fb):
+        """Light the outer buttons as a continuation of the CURRENT effect — each
+        border button mirrors the grid pixel next to it, so the border changes with
+        the active mode (not a static overlay). Covers the whole ring: Mini MK3 uses
+        the top row + right column, Launchpad Pro also lights the bottom row + left
+        column; indices a device doesn't have are simply ignored by the hardware."""
+        def boost(px):                                    # lift the edge pixel so the buttons read clearly
+            return (min(1.0, float(px[0]) ** 0.85 * 1.2),
+                    min(1.0, float(px[1]) ** 0.85 * 1.2),
+                    min(1.0, float(px[2]) ** 0.85 * 1.2))
         out = {}
-        for i, idx in enumerate(strip):
-            pos = i / n
-            comet = 0.5 + 0.5 * math.sin(pos * 2 * math.pi - self.flow * 0.6)
-            v = min(1.0, base * (0.35 + 0.65 * comet)) * bright
-            hue = (c.hue + pos * 0.5 + self.flow * 0.02) % 1.0
-            rgb = LS.hsv2rgb(hue, 0.9, v)
-            out[idx] = (float(rgb[0]), float(rgb[1]), float(rgb[2]))
+        for cc in range(N):
+            out[TOP_ROW[cc]] = boost(fb[N - 1, cc])       # top buttons  <- top grid row
+            out[cc + 1]      = boost(fb[0, cc])           # bottom (Pro) <- bottom grid row
+        for rr in range(N):
+            out[RIGHT_COL[rr]] = boost(fb[rr, N - 1])     # right buttons <- right grid column
+            out[(rr + 1) * 10] = boost(fb[rr, 0])         # left (Pro)    <- left grid column
         return out
 
     # ---- live controls (top row + right column of the pad while in light mode) ----
@@ -1399,7 +1399,8 @@ def deck_loop(should_stop=lambda: False, light_request=None, set_frame=None, lig
                 light_engine.close(); light_engine = None
             light_mode = False; last_sent.clear()
             clr = {pad_index(c, r): (0, 0, 0) for r in range(N) for c in range(N)}
-            clr.update({i: (0, 0, 0) for i in TOP_ROW + RIGHT_COL})   # also clear the border glow
+            ring = TOP_ROW + RIGHT_COL + [i + 1 for i in range(N)] + [(i + 1) * 10 for i in range(N)]
+            clr.update({i: (0, 0, 0) for i in ring})                  # also clear the whole border ring
             out.write_sys_ex(0, rgb_sysex(clr))
             print("[deck] light OFF", flush=True)
         else:
@@ -1519,7 +1520,7 @@ def deck_loop(should_stop=lambda: False, light_request=None, set_frame=None, lig
                     fb = light_engine.frame()
                     if fb is not None:
                         try:
-                            border = light_engine.border_colors()    # outer buttons glow with the music
+                            border = light_engine.border_colors(fb)  # outer buttons continue the current effect
                         except Exception:
                             border = None
                         out.write_sys_ex(0, LS.rgb_sysex(fb, border))
