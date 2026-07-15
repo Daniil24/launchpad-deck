@@ -1097,6 +1097,25 @@ class LightEngine:
                 fb[0, cc] = hcol if cc < n else dim
         return np.clip(fb, 0, 1)
 
+    def border_colors(self):
+        """Colours for the outer buttons (top row + right column) so they glow
+        with the music while the 8×8 grid stays the main canvas. Returns
+        {led_index: (r,g,b) in 0..1}. Harmless on devices without those LEDs."""
+        c = self.ctx
+        strip = RIGHT_COL + TOP_ROW[::-1]                 # continuous path: bottom-right -> up -> across top
+        n = len(strip)
+        base = 0.10 + 0.45 * c.energy + 0.9 * self.bass_kick
+        bright = self.cfg.get("bright", 1.0)
+        out = {}
+        for i, idx in enumerate(strip):
+            pos = i / n
+            comet = 0.5 + 0.5 * math.sin(pos * 2 * math.pi - self.flow * 0.6)
+            v = min(1.0, base * (0.35 + 0.65 * comet)) * bright
+            hue = (c.hue + pos * 0.5 + self.flow * 0.02) % 1.0
+            rgb = LS.hsv2rgb(hue, 0.9, v)
+            out[idx] = (float(rgb[0]), float(rgb[1]), float(rgb[2]))
+        return out
+
     # ---- live controls (top row + right column of the pad while in light mode) ----
     def _pool(self): return list(range(len(self.effects)))
     def _switch(self, to):
@@ -1379,8 +1398,9 @@ def deck_loop(should_stop=lambda: False, light_request=None, set_frame=None, lig
             if light_engine:
                 light_engine.close(); light_engine = None
             light_mode = False; last_sent.clear()
-            out.write_sys_ex(0, rgb_sysex({pad_index(c, r): (0, 0, 0)
-                                           for r in range(N) for c in range(N)}))
+            clr = {pad_index(c, r): (0, 0, 0) for r in range(N) for c in range(N)}
+            clr.update({i: (0, 0, 0) for i in TOP_ROW + RIGHT_COL})   # also clear the border glow
+            out.write_sys_ex(0, rgb_sysex(clr))
             print("[deck] light OFF", flush=True)
         else:
             try:
@@ -1498,7 +1518,11 @@ def deck_loop(should_stop=lambda: False, light_request=None, set_frame=None, lig
                 try:
                     fb = light_engine.frame()
                     if fb is not None:
-                        out.write_sys_ex(0, LS.rgb_sysex(fb))
+                        try:
+                            border = light_engine.border_colors()    # outer buttons glow with the music
+                        except Exception:
+                            border = None
+                        out.write_sys_ex(0, LS.rgb_sysex(fb, border))
                         if set_frame:
                             set_frame({pad_index(c, r): (int(fb[r, c, 0] * 127), int(fb[r, c, 1] * 127),
                                                          int(fb[r, c, 2] * 127)) for r in range(N) for c in range(N)})
