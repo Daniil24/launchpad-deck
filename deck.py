@@ -542,6 +542,9 @@ class _SlobsPipe:
                                        ctypes.wintypes.DWORD, ctypes.wintypes.DWORD,
                                        ctypes.wintypes.HANDLE]
         self.k.WaitNamedPipeW.argtypes = [ctypes.wintypes.LPCWSTR, ctypes.wintypes.DWORD]
+        self.k.PeekNamedPipe.argtypes = [ctypes.wintypes.HANDLE, ctypes.wintypes.LPVOID,
+                                         ctypes.wintypes.DWORD, ctypes.wintypes.LPDWORD,
+                                         ctypes.wintypes.LPDWORD, ctypes.wintypes.LPDWORD]
         self.INVALID = ctypes.wintypes.HANDLE(-1).value
         self.h = None
 
@@ -559,40 +562,54 @@ class _SlobsPipe:
             return False
         return False
 
-    def _read(self):
-        buf = b""; tmp = ctypes.create_string_buffer(65536); n = ctypes.wintypes.DWORD(0)
-        while True:
-            ok = self.k.ReadFile(self.h, tmp, 65536, ctypes.byref(n), None)
-            buf += tmp.raw[:n.value]
-            if ok:
-                break
-            if ctypes.get_last_error() == self._MORE:
-                continue
-            break
-        return buf
+    _MISS = object()                             # "matching id not seen yet" sentinel
 
-    def request(self, method, resource, *args):
+    def _match(self, buf, rid):
+        # accept newline-delimited OR single-message JSON; ignore async event frames
+        for line in buf.decode("utf-8", "replace").replace("\r", "").split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue                          # partial / not-yet-complete frame
+            if isinstance(obj, dict) and obj.get("id") == rid:
+                return obj.get("result")
+        return self._MISS
+
+    def request(self, method, resource, *args, timeout=2.5):
+        """Send one JSON-RPC request and wait (bounded) for its reply.
+
+        NEVER blocks indefinitely: PeekNamedPipe is polled so ReadFile only runs
+        when data is actually available, and the whole thing gives up after `timeout`.
+        """
         rid = int(time.time() * 1000) % 100000
         req = {"jsonrpc": "2.0", "id": rid, "method": method,
                "params": {"resource": resource, "args": list(args)}}
-        n = ctypes.wintypes.DWORD(0)
         data = (json.dumps(req) + "\n").encode("utf-8")
-        self.k.WriteFile(self.h, data, len(data), ctypes.byref(n), None)
-        for _ in range(40):                      # skip async event frames, match our id
-            raw = self._read()
-            if not raw:
+        n = ctypes.wintypes.DWORD(0)
+        if not self.k.WriteFile(self.h, data, len(data), ctypes.byref(n), None):
+            return None
+        deadline = time.time() + timeout
+        buf = b""
+        while time.time() < deadline:
+            avail = ctypes.wintypes.DWORD(0)
+            if not self.k.PeekNamedPipe(self.h, None, 0, None, ctypes.byref(avail), None):
+                return None                       # pipe closed / broken
+            if avail.value == 0:
+                time.sleep(0.02)
+                continue
+            tmp = ctypes.create_string_buffer(avail.value)
+            got = ctypes.wintypes.DWORD(0)
+            ok = self.k.ReadFile(self.h, tmp, avail.value, ctypes.byref(got), None)
+            buf += tmp.raw[:got.value]
+            if not ok and ctypes.get_last_error() not in (0, self._MORE):
                 return None
-            for line in raw.decode("utf-8", "replace").splitlines():
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    obj = json.loads(line)
-                except Exception:
-                    continue
-                if obj.get("id") == rid:
-                    return obj.get("result")
-        return None
+            res = self._match(buf, rid)
+            if res is not self._MISS:
+                return res
+        return None                               # timed out — reply never arrived
 
     def close(self):
         try:
@@ -672,9 +689,7 @@ def obs_action(spec):
     threading.Thread(target=_worker, daemon=True).start()
 
 
-def obs_test():
-    """Synchronous connectivity check for the GUI 'test connection' button.
-    Returns (ok, backend_name, message)."""
+def _obs_test_inner():
     backend = _obs_backend()
     order = {"obs": ["obs"], "streamlabs": ["streamlabs"]}.get(backend, ["obs", "streamlabs"])
     errs = []
@@ -683,21 +698,48 @@ def obs_test():
             if b == "obs":
                 cl = _obsws_client()
                 cl.get_version()
+                _OBS_LAST["backend"] = "obs"
                 return True, "OBS Studio", "OBS Studio"
             else:
                 p = _SlobsPipe()
                 if not p.open():
-                    raise OSError("pipe unavailable")
+                    raise OSError("pipe unavailable (Streamlabs не запущен, или он от админа — запусти Launchpad Deck тоже от админа)")
                 try:
-                    p.request("getScenes", "ScenesService")
+                    scenes = p.request("getScenes", "ScenesService")
                 finally:
                     p.close()
+                if scenes is None:
+                    raise OSError("no reply from Streamlabs pipe")
+                _OBS_LAST["backend"] = "streamlabs"
                 return True, "Streamlabs", "Streamlabs Desktop"
         except Exception as e:
             if b == "obs":
                 _OBS["cl"] = None
             errs.append(f"{b}: {e}")
     return False, None, " | ".join(errs)
+
+
+def obs_test():
+    """Connectivity check for the GUI 'test connection' button.
+
+    Runs on a worker thread with a hard join timeout so it can NEVER hang the
+    caller (the pywebview API thread), even if a backend misbehaves.
+    Returns (ok, backend_name, message).
+    """
+    box = {"r": (False, None, "timeout")}
+
+    def work():
+        try:
+            box["r"] = _obs_test_inner()
+        except Exception as e:
+            box["r"] = (False, None, str(e))
+
+    t = threading.Thread(target=work, daemon=True)
+    t.start()
+    t.join(7.0)
+    if t.is_alive():
+        return False, None, "timeout — программа не ответила вовремя"
+    return box["r"]
 
 
 def run_action(a):
