@@ -14,6 +14,7 @@ Run:  python deck.py            (add --list to see MIDI ports)
 import argparse
 import collections
 import ctypes
+import ctypes.wintypes  # noqa: F401  (Streamlabs named-pipe client)
 import glob
 import json
 import math
@@ -472,56 +473,231 @@ def set_app_volume(spec):
         log(f"[deck] app volume '{spec}' failed: {e}")
 
 
+# ------------------------------------------------------------------ OBS / Streamlabs
+# Two backends behind one obs_action():
+#   * "obs"        -> OBS Studio via obs-websocket v5 (obsws_python), needs the built-in
+#                     WebSocket Server enabled (Tools -> WebSocket Server Settings).
+#   * "streamlabs" -> Streamlabs Desktop via its local named-pipe JSON-RPC API.
+#   * "auto"       -> try OBS Studio first, then Streamlabs.
+# All calls run on a worker thread (never on the render loop) so a missing / slow
+# target can NEVER freeze the pad.
 _OBS = {"cl": None}
+_OBS_LOCK = threading.Lock()
+_OBS_LAST = {"backend": None}
 
 
-def _obs_creds():
+def _obs_settings():
     try:
         with open(os.path.join(os.path.dirname(CONFIG) or HERE, "settings.json"), encoding="utf-8") as f:
-            s = json.load(f)
-        return s.get("obs_host", "localhost"), int(s.get("obs_port", 4455)), s.get("obs_password", "")
+            return json.load(f)
     except Exception:
-        return "localhost", 4455, ""
+        return {}
 
 
-def _obs_client():
+def _obs_backend():
+    return (_obs_settings().get("obs_backend", "auto") or "auto").lower()
+
+
+# ---- OBS Studio (obs-websocket v5) ----
+def _obsws_client():
     if _OBS.get("cl") is not None:
         return _OBS["cl"]
-    try:
-        import obsws_python as obs
-        host, port, pw = _obs_creds()
-        _OBS["cl"] = obs.ReqClient(host=host, port=port, password=pw, timeout=3)
-        return _OBS["cl"]
-    except Exception as e:
-        log(f"[deck] OBS connect failed: {e}")
+    import obsws_python as obs
+    s = _obs_settings()
+    host = s.get("obs_host", "localhost"); port = int(s.get("obs_port", 4455))
+    pw = s.get("obs_password", "")
+    _OBS["cl"] = obs.ReqClient(host=host, port=port, password=pw, timeout=3)
+    return _OBS["cl"]
+
+
+def _obsws_action(cmd, arg):
+    cl = _obsws_client()
+    if cmd == "scene" and arg:
+        cl.set_current_program_scene(arg)
+    elif cmd == "record":
+        cl.toggle_record()
+    elif cmd == "stream":
+        cl.toggle_stream()
+    elif cmd == "pause":
+        cl.toggle_record_pause()
+    elif cmd == "mute" and arg:
+        cl.toggle_input_mute(arg)
+    elif cmd in ("replay", "save_replay"):
+        cl.save_replay_buffer()
+    elif cmd == "virtualcam":
+        cl.toggle_virtual_cam()
+
+
+# ---- Streamlabs Desktop (local named-pipe JSON-RPC) ----
+class _SlobsPipe:
+    PIPE = r"\\.\pipe\slobs"
+    _GR = 0x80000000; _GW = 0x40000000; _OPEN = 3
+    _MSG = 0x00000002; _MORE = 234; _BUSY = 231
+
+    def __init__(self):
+        self.k = ctypes.WinDLL("kernel32", use_last_error=True)
+        self.k.CreateFileW.restype = ctypes.wintypes.HANDLE
+        self.k.CreateFileW.argtypes = [ctypes.wintypes.LPCWSTR, ctypes.wintypes.DWORD,
+                                       ctypes.wintypes.DWORD, ctypes.wintypes.LPVOID,
+                                       ctypes.wintypes.DWORD, ctypes.wintypes.DWORD,
+                                       ctypes.wintypes.HANDLE]
+        self.k.WaitNamedPipeW.argtypes = [ctypes.wintypes.LPCWSTR, ctypes.wintypes.DWORD]
+        self.INVALID = ctypes.wintypes.HANDLE(-1).value
+        self.h = None
+
+    def open(self):
+        for _ in range(6):
+            h = self.k.CreateFileW(self.PIPE, self._GR | self._GW, 0, None, self._OPEN, 0, None)
+            if h != self.INVALID:
+                mode = ctypes.wintypes.DWORD(self._MSG)
+                self.k.SetNamedPipeHandleState(h, ctypes.byref(mode), None, None)
+                self.h = h
+                return True
+            if ctypes.get_last_error() == self._BUSY:
+                self.k.WaitNamedPipeW(self.PIPE, 800)
+                continue
+            return False
+        return False
+
+    def _read(self):
+        buf = b""; tmp = ctypes.create_string_buffer(65536); n = ctypes.wintypes.DWORD(0)
+        while True:
+            ok = self.k.ReadFile(self.h, tmp, 65536, ctypes.byref(n), None)
+            buf += tmp.raw[:n.value]
+            if ok:
+                break
+            if ctypes.get_last_error() == self._MORE:
+                continue
+            break
+        return buf
+
+    def request(self, method, resource, *args):
+        rid = int(time.time() * 1000) % 100000
+        req = {"jsonrpc": "2.0", "id": rid, "method": method,
+               "params": {"resource": resource, "args": list(args)}}
+        n = ctypes.wintypes.DWORD(0)
+        data = (json.dumps(req) + "\n").encode("utf-8")
+        self.k.WriteFile(self.h, data, len(data), ctypes.byref(n), None)
+        for _ in range(40):                      # skip async event frames, match our id
+            raw = self._read()
+            if not raw:
+                return None
+            for line in raw.decode("utf-8", "replace").splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+                if obj.get("id") == rid:
+                    return obj.get("result")
         return None
+
+    def close(self):
+        try:
+            if self.h:
+                self.k.CloseHandle(self.h)
+        except Exception:
+            pass
+        self.h = None
+
+
+def _slobs_action(cmd, arg):
+    p = _SlobsPipe()
+    if not p.open():
+        raise OSError("Streamlabs pipe unavailable (запусти Streamlabs; если он от админа — запусти и Launchpad Deck от админа)")
+    try:
+        if cmd == "scene" and arg:
+            scenes = p.request("getScenes", "ScenesService") or []
+            sid = next((s.get("id") for s in scenes
+                        if (s.get("name") or "").lower() == arg.lower()), None)
+            if sid is None:
+                sid = next((s.get("id") for s in scenes
+                            if arg.lower() in (s.get("name") or "").lower()), None)
+            if sid:
+                p.request("makeSceneActive", "ScenesService", sid)
+        elif cmd == "record":
+            p.request("toggleRecording", "StreamingService")
+        elif cmd == "stream":
+            p.request("toggleStreaming", "StreamingService")
+        elif cmd == "pause":
+            p.request("toggleRecording", "StreamingService")   # SLOBS has no separate pause
+        elif cmd == "mute" and arg:
+            srcs = p.request("getSources", "AudioService") or []
+            src = next((s for s in srcs if (s.get("name") or "").lower() == arg.lower()), None)
+            if src is None:
+                src = next((s for s in srcs if arg.lower() in (s.get("name") or "").lower()), None)
+            if src and src.get("resourceId"):
+                p.request("setMuted", src["resourceId"], not bool(src.get("muted")))
+        elif cmd in ("replay", "save_replay"):
+            p.request("saveReplay", "StreamingService")
+        elif cmd == "virtualcam":
+            pass                                   # not exposed by the SLOBS API
+    finally:
+        p.close()
+
+
+def _do_obs_action(spec):
+    parts = [x.strip() for x in spec.split(":", 1)]
+    cmd = parts[0].lower(); arg = parts[1] if len(parts) > 1 else ""
+    backend = _obs_backend()
+    order = {"obs": ["obs"], "streamlabs": ["streamlabs"]}.get(backend, ["obs", "streamlabs"])
+    if backend not in ("obs", "streamlabs") and _OBS_LAST["backend"] in order:
+        order = [_OBS_LAST["backend"]] + [b for b in order if b != _OBS_LAST["backend"]]
+    errs = []
+    for b in order:
+        try:
+            if b == "obs":
+                _obsws_action(cmd, arg)
+            else:
+                _slobs_action(cmd, arg)
+            _OBS_LAST["backend"] = b
+            return
+        except Exception as e:
+            if b == "obs":
+                _OBS["cl"] = None                # drop stale ws connection, reconnect next time
+            errs.append(f"{b}: {e}")
+    log(f"[deck] OBS action '{spec}' failed -> " + " | ".join(errs))
 
 
 def obs_action(spec):
-    """spec: scene:Name / record / stream / pause / mute:Source / replay / virtualcam."""
-    parts = [x.strip() for x in spec.split(":", 1)]
-    cmd = parts[0].lower(); arg = parts[1] if len(parts) > 1 else ""
-    cl = _obs_client()
-    if cl is None:
-        return
-    try:
-        if cmd == "scene" and arg:
-            cl.set_current_program_scene(arg)
-        elif cmd == "record":
-            cl.toggle_record()
-        elif cmd == "stream":
-            cl.toggle_stream()
-        elif cmd == "pause":
-            cl.toggle_record_pause()
-        elif cmd == "mute" and arg:
-            cl.toggle_input_mute(arg)
-        elif cmd in ("replay", "save_replay"):
-            cl.save_replay_buffer()
-        elif cmd == "virtualcam":
-            cl.toggle_virtual_cam()
-    except Exception as e:
-        _OBS["cl"] = None                    # drop stale connection, reconnect next time
-        log(f"[deck] OBS action '{spec}' failed: {e}")
+    """Fire-and-forget on a worker thread so the render loop never blocks.
+
+    spec: scene:Name / record / stream / pause / mute:Source / replay / virtualcam.
+    """
+    def _worker():
+        with _OBS_LOCK:                          # serialise requests (one client at a time)
+            _do_obs_action(spec)
+    threading.Thread(target=_worker, daemon=True).start()
+
+
+def obs_test():
+    """Synchronous connectivity check for the GUI 'test connection' button.
+    Returns (ok, backend_name, message)."""
+    backend = _obs_backend()
+    order = {"obs": ["obs"], "streamlabs": ["streamlabs"]}.get(backend, ["obs", "streamlabs"])
+    errs = []
+    for b in order:
+        try:
+            if b == "obs":
+                cl = _obsws_client()
+                cl.get_version()
+                return True, "OBS Studio", "OBS Studio"
+            else:
+                p = _SlobsPipe()
+                if not p.open():
+                    raise OSError("pipe unavailable")
+                try:
+                    p.request("getScenes", "ScenesService")
+                finally:
+                    p.close()
+                return True, "Streamlabs", "Streamlabs Desktop"
+        except Exception as e:
+            if b == "obs":
+                _OBS["cl"] = None
+            errs.append(f"{b}: {e}")
+    return False, None, " | ".join(errs)
 
 
 def run_action(a):

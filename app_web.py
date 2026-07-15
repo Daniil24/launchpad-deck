@@ -39,7 +39,7 @@ AUTO_LNK = os.path.join(STARTUP, "Launchpad Deck.lnk")
 CREATE_NO_WINDOW = 0x08000000
 N = 8
 
-VERSION = "1.1"
+VERSION = "1.2"
 GITHUB_REPO = "Daniil24/launchpad-deck"
 TON_ADDRESS = "UQAK1sIJqPVn9ND8JTOEUlrBFyAiVU0j6IiiXczTM7YmX4CB"
 TON_LINK = "https://app.tonkeeper.com/transfer/" + TON_ADDRESS
@@ -336,7 +336,9 @@ def _strings():
             "cancel", "scene_ctrl", "scene_prev", "scene_next", "scene_random", "scene_palette",
             "scene_auto", "scene_hint", "ctl_popup_title", "ctl_note", "grid_ctl_hint", "profiles",
             "prof_new", "prof_rename", "prof_del", "prof_name_q", "prof_hint", "obs_section",
-            "obs_pass_ph", "obs_hint", "plugins_section", "plugins_open", "plugins_hint", "tut_back",
+            "obs_pass_ph", "obs_hint", "obs_backend_lbl", "obs_backend_auto", "obs_backend_obs",
+            "obs_backend_slobs", "obs_pw_lbl", "obs_test", "obs_test_wait", "obs_test_ok",
+            "obs_test_fail", "plugins_section", "plugins_open", "plugins_hint", "tut_back",
             "tut_next", "tut_done", "tut_skip"]
     out = {k: i18n.t(k) for k in keys}
     for tp in TYPES:
@@ -360,6 +362,8 @@ class Api:
             "ctl_lbl": CTL_LBL, "tut": TUT_KINDS,
             "lang": i18n.current(), "langs": i18n.LANG_NAMES, "lang_order": i18n.LANG_ORDER,
             "obs_password": load_settings().get("obs_password", ""),
+            "obs_backend": load_settings().get("obs_backend", "auto"),
+            "obs_port": int(load_settings().get("obs_port", 4455)),
             "tutorial_seen": os.path.exists(os.path.join(CFG_DIR, "tutorial_seen.txt")),
             "device": detect_device(),
             # Launchpad Pro extra outer buttons (assignable macros), keyed "o<sysex-index>"
@@ -522,7 +526,30 @@ class Api:
 
     def set_obs_password(self, pw):
         save_settings({**load_settings(), "obs_password": pw or ""})
+        D._OBS["cl"] = None                      # force reconnect with new password
         return True
+
+    def set_obs_backend(self, backend):
+        b = backend if backend in ("auto", "obs", "streamlabs") else "auto"
+        save_settings({**load_settings(), "obs_backend": b})
+        D._OBS["cl"] = None
+        return True
+
+    def set_obs_port(self, port):
+        try:
+            p = int(port)
+        except Exception:
+            p = 4455
+        save_settings({**load_settings(), "obs_port": p})
+        D._OBS["cl"] = None
+        return True
+
+    def obs_test(self):
+        try:
+            ok, backend, msg = D.obs_test()
+            return {"ok": ok, "backend": backend, "msg": msg}
+        except Exception as e:
+            return {"ok": False, "backend": None, "msg": str(e)}
 
     def open_plugins(self):
         ensure_plugins()

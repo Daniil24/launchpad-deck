@@ -38,6 +38,11 @@ function applyStrings(){
   tset('langSec','language'); tset('autoSec','autostart'); tset('autoSwitchT','autostart_switch');
   tset('autoHint','autostart_hint'); tset('obsSec','obs_section'); tset('obsHint','obs_hint');
   $('obsPw').placeholder = S.obs_pass_ph || '';
+  tset('obsBackendLbl','obs_backend_lbl'); tset('obsPwLbl','obs_pw_lbl'); tset('obsTestT','obs_test');
+  const _ob = $('obsBackend');
+  _ob.innerHTML = [['auto', S.obs_backend_auto], ['obs', S.obs_backend_obs], ['streamlabs', S.obs_backend_slobs]]
+    .map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  _ob.value = M.obs_backend || 'auto';
   tset('plugSec','plugins_section'); tset('plugBtnT','plugins_open'); tset('plugHint','plugins_hint');
   tset('tutSec','tutorial_section'); tset('tutAgainT','tutorial_again');
   tset('rightsBadge','rights_badge'); tset('authorName','author_name');
@@ -284,6 +289,15 @@ function bind(){
   $('autoChk').onchange = ()=>api().set_autostart($('autoChk').checked);
   $('langSel').onchange = async ()=>{ await api().set_lang($('langSel').value); location.reload(); };
   $('obsPw').oninput = ()=>api().set_obs_password($('obsPw').value);
+  $('obsBackend').onchange = ()=>api().set_obs_backend($('obsBackend').value);
+  $('obsTestBtn').onclick = async ()=>{
+    const res = $('obsTestRes');
+    res.className = 'obs-res wait'; res.textContent = S.obs_test_wait || '…';
+    let r;
+    try{ r = await api().obs_test(); }catch(e){ r = {ok:false}; }
+    if (r && r.ok){ res.className = 'obs-res ok'; res.textContent = '✓ ' + (S.obs_test_ok || 'connected') + ' — ' + r.backend; }
+    else { res.className = 'obs-res err'; res.textContent = '✗ ' + (S.obs_test_fail || 'no connection'); }
+  };
   $('plugBtn').onclick = ()=>api().open_plugins();
   $('tgBtn').onclick = ()=>api().open_url('https://t.me/universemusicrecords');
   $('mailBtn').onclick = ()=>api().open_url('mailto:doskin50@gmail.com');
