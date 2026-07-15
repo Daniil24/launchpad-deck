@@ -67,13 +67,19 @@ def hsv2rgb(h, s, v):
     return np.stack([r, g, b], axis=-1).astype(np.float32)
 
 
-def rgb_sysex(fb):
+def rgb_sysex(fb, border=None):
     v = np.clip(fb, 0, 1)
     body = []
     for r in range(N):
         for c in range(N):
             px = v[r, c]
             body += [0x03, IDX[r][c], int(px[0] * 127), int(px[1] * 127), int(px[2] * 127)]
+    if border:                                    # optional outer buttons: {led_index: (r,g,b) in 0..1}
+        for idx, (br, bg, bb) in border.items():
+            body += [0x03, idx,
+                     int(min(1.0, max(0.0, br)) * 127),
+                     int(min(1.0, max(0.0, bg)) * 127),
+                     int(min(1.0, max(0.0, bb)) * 127)]
     return [0xF0] + HDR + [0x03] + body + [0xF7]
 
 
@@ -1414,6 +1420,125 @@ class Vortex(Effect):
         return hsv2rgb(ctx.hue + DIST * 0.1, 1.0, v)
 
 
+# ---- extra generative modes (v1.5) ----
+class Lava(Effect):
+    """Warm lava lamp — slow blobs, brighter at the bottom, swells on bass."""
+    name = "lava"
+    def frame(self, ctx):
+        t = ctx.flow * 0.5
+        field = (np.sin(GX * 0.8 + t) + np.sin(GY * 0.6 - t * 1.4 + np.sin(GX * 0.5 + t))
+                 + np.sin(DIST * 0.7 - t))
+        field = (field + 3) / 6.0
+        lift = 1.0 - GY / (N - 1)
+        v = np.clip((0.3 + 0.7 * ctx.bass) * (0.35 + 0.65 * field) * (0.55 + 0.45 * lift), 0, 1)
+        hue = (0.02 + 0.10 * field + 0.05 * ctx.energy) % 1.0
+        return hsv2rgb(hue, 1.0, v)
+
+
+class Snowfall(Effect):
+    """Gentle cool flakes drifting down."""
+    name = "snow"
+    def __init__(self):
+        super().__init__(); self.flakes = []
+    def frame(self, ctx):
+        self.buf *= 0.55
+        if np.random.rand() < 0.4 + ctx.energy:
+            self.flakes.append([np.random.rand() * N, N - 0.5, 0.4 + np.random.rand() * 0.6])
+        keep = []
+        for f in self.flakes:
+            f[1] -= ctx.dt * (2.0 + 4.0 * f[2])
+            f[0] += np.sin(ctx.flow + f[1]) * ctx.dt * 0.8
+            if f[1] > -0.5:
+                r = int(round(f[1])); c = int(round(f[0])) % N
+                if 0 <= r < N:
+                    self.buf[r, c] = hsv2rgb(0.55, 0.15, f[2])
+                keep.append(f)
+        self.flakes = keep
+        return self.buf
+
+
+class Checker(Effect):
+    """Two-tone checkerboard that flips on every beat."""
+    name = "checker"
+    def __init__(self):
+        super().__init__(); self.phase = 0
+    def frame(self, ctx):
+        if ctx.beat:
+            self.phase ^= 1
+        board = ((GX.astype(int) + GY.astype(int) + self.phase) % 2).astype(np.float32)
+        v = 0.3 + 0.7 * ctx.energy
+        a = hsv2rgb(ctx.hue, 1.0, v) * board[:, :, None]
+        b = hsv2rgb((ctx.hue + 0.5) % 1.0, 1.0, v) * (1 - board)[:, :, None]
+        return a + b
+
+
+class Radar(Effect):
+    """A rotating sweep line with a fading trail; blip ring on the beat."""
+    name = "radar"
+    def __init__(self):
+        super().__init__(); self.a = 0.0
+    def frame(self, ctx):
+        self.buf *= 0.82
+        self.a += ctx.dt * (1.5 + 4.0 * ctx.energy)
+        diff = (ANG - self.a) % (2 * np.pi)
+        beam = np.exp(-(diff ** 2) / 0.15) + np.exp(-((diff - 2 * np.pi) ** 2) / 0.15)
+        self.buf += beam[:, :, None] * hsv2rgb(ctx.hue, 1.0, 1.0)
+        if ctx.beat:
+            ring = np.exp(-((DIST - np.random.rand() * 4) ** 2) / 0.3)
+            self.buf += ring[:, :, None] * hsv2rgb((ctx.hue + 0.3) % 1.0, 1.0, 1.0) * 0.6
+        return self.buf
+
+
+class Pond(Effect):
+    """Concentric ripples rolling out from the centre, driven by bass."""
+    name = "pond"
+    def frame(self, ctx):
+        wave = np.sin(DIST * 1.6 - ctx.flow * 1.5) * (0.4 + 0.6 * ctx.bass)
+        v = np.clip(0.15 + 0.85 * (0.5 + 0.5 * wave) * (0.4 + 0.6 * ctx.energy), 0, 1)
+        return hsv2rgb((ctx.hue + DIST * 0.04) % 1.0, 0.85, v)
+
+
+class Heartbeat(Effect):
+    """A double-thump ring, lub-dub, on every beat — red pulse."""
+    name = "heartbeat"
+    def __init__(self):
+        super().__init__(); self.pulses = []
+    def frame(self, ctx):
+        self.buf *= 0.6
+        if ctx.beat:
+            self.pulses.append(0.0); self.pulses.append(-0.18)     # second, delayed thump
+        keep = []
+        for p in self.pulses:
+            p += ctx.dt * 7.0
+            if 0 < p < 8:
+                band = np.exp(-((DIST - p) ** 2) / 0.3) * (1 - p / 8.0)
+                self.buf += band[:, :, None] * hsv2rgb(0.0, 0.9, 1.0)
+            if p < 8:
+                keep.append(p)
+        self.pulses = keep
+        return self.buf + hsv2rgb(0.0, 0.7, 0.05)
+
+
+class Waterfall(Effect):
+    """Spectrum cascade — colours spawn on top and fall to the bottom."""
+    name = "waterfall"
+    def frame(self, ctx):
+        self.buf[0:N - 1] = self.buf[1:N] * 0.9                    # everything shifts down one row
+        for c in range(N):
+            self.buf[N - 1, c] = hsv2rgb((0.6 - ctx.bands[c] * 0.6) % 1.0, 1.0, float(ctx.bands[c]))
+        return self.buf
+
+
+class HueWheel(Effect):
+    """A spinning rainbow wheel; the centre pumps with the bass."""
+    name = "huewheel"
+    def frame(self, ctx):
+        hue = ((ANG / (2 * np.pi)) + ctx.flow * 0.05) % 1.0
+        v = np.clip(0.2 + 0.8 * ctx.energy - DIST * 0.04, 0, 1)
+        v = np.clip(v + ctx.bass * np.exp(-DIST ** 2 / 3.0), 0, 1)
+        return hsv2rgb(hue, 1.0, v)
+
+
 # Curated: clear, readable, pretty, obviously music-reactive
 GEN_EFFECTS = [Snake, DancingMan, Alien, Cat, Robot, RunningMan,
                Lightning, HueBands, RadialBurst, Galaxy, Vortex, Swirl,
@@ -1426,7 +1551,8 @@ GEN_EFFECTS = [Snake, DancingMan, Alien, Cat, Robot, RunningMan,
                Bursts, Neon, Popcorn, KaleidoShapes,
                CornerBurst, SideSweep, EdgeRipples, DiagWipe,
                FilledPop, ZoomShapes, NestedSquares, SpinPoly, Rotator,
-               Warp, Heart, Fireflies, Orbit, Interference, MeteorShower]
+               Warp, Heart, Fireflies, Orbit, Interference, MeteorShower,
+               Lava, Snowfall, Checker, Radar, Pond, Heartbeat, Waterfall, HueWheel]
 
 
 def build_effects(lib):

@@ -41,7 +41,7 @@ AUTO_LNK = os.path.join(STARTUP, "Launchpad Deck.lnk")
 CREATE_NO_WINDOW = 0x08000000
 N = 8
 
-VERSION = "1.4"
+VERSION = "1.5"
 GITHUB_REPO = "Daniil24/launchpad-deck"
 TON_ADDRESS = "UQAK1sIJqPVn9ND8JTOEUlrBFyAiVU0j6IiiXczTM7YmX4CB"
 TON_LINK = "https://app.tonkeeper.com/transfer/" + TON_ADDRESS
@@ -355,9 +355,44 @@ def set_autostart(enable):
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception:
             pass
+        try:                                     # remember which exe/version autostart now points to
+            save_settings({**load_settings(), "autostart_version": VERSION, "autostart_exe": target})
+        except Exception:
+            pass
     else:
         try:
             os.remove(AUTO_LNK)
+        except Exception:
+            pass
+
+
+def _read_shortcut_target(path):
+    try:
+        ps = f'(New-Object -ComObject WScript.Shell).CreateShortcut("{path}").TargetPath'
+        r = subprocess.run(["powershell", "-NoProfile", "-Command", ps], creationflags=CREATE_NO_WINDOW,
+                           capture_output=True, text=True, timeout=8)
+        return (r.stdout or "").strip()
+    except Exception:
+        return ""
+
+
+def refresh_autostart():
+    """Self-heal autostart: if it points to a different exe and THIS build is newer
+    than the one autostart last recorded (or the old exe is gone), re-point it to the
+    exe the user is actually running now. Never downgrades."""
+    if not getattr(sys, "frozen", False) or not os.path.exists(AUTO_LNK):
+        return
+    cur = os.path.normcase(os.path.abspath(sys.executable))
+    tgt = os.path.normcase(os.path.abspath(_read_shortcut_target(AUTO_LNK) or "x"))
+    if tgt == cur:
+        return
+    stored = load_settings().get("autostart_version", "0")
+    # re-point to the exe the user is running now, unless it is strictly OLDER than
+    # the version autostart last recorded (never downgrade), or the old target is gone.
+    if not _newer(stored, VERSION) or not os.path.exists(tgt):
+        set_autostart(True)                      # recreate the shortcut pointing to this exe
+        try:
+            D.log("[deck] autostart re-pointed to v%s (%s)" % (VERSION, sys.executable))
         except Exception:
             pass
 
@@ -746,6 +781,7 @@ def main():
         _spawn()
         threading.Thread(target=_poller, daemon=True).start()
         threading.Thread(target=_check_update, daemon=True).start()
+        threading.Thread(target=refresh_autostart, daemon=True).start()
         try:
             TRAY[0] = build_tray(api)
             TRAY[0].run_detached()
