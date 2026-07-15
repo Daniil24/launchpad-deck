@@ -53,8 +53,8 @@
 
 **Launchpad Deck** turns your Novation light pad into two things at once:
 
-- 🎛 **Macro deck** (like a Stream Deck) — map pads to launch apps, media & volume, mic mute (works in Discord), lock PC, hotkeys, **OBS** control and much more.
-- 🎆 **Light show** — the pad reacts to your PC audio: bass hits, hi-hats sparkle, drops flash. **60+** scenes with animations and characters.
+- 🎛 **Macro deck** (like a Stream Deck) — map pads to launch apps, media & volume, mic mute (works in Discord), lock PC, hotkeys, **OBS Studio & Streamlabs** control and much more.
+- 🎆 **Light show** — the pad reacts to your PC audio: bass hits, hi-hats sparkle, drops flash. **69** scenes with animations and characters, and the side buttons glow to the beat too.
 
 All in one window, one `.exe` — **no** need to install Python or libraries. No subscription. No cloud. Works offline.
 
@@ -80,15 +80,19 @@ All in one window, one `.exe` — **no** need to install Python or libraries. No
 
 ### 🎛 Macro deck
 - Program **every pad**: launch apps, media (play/pause/track), volume — **master and per-app** (`spotify:up`, `discord:mute`, `chrome:set:30`), **system mic mute** (silences everywhere, including Discord), **lock PC**, screenshot, run a file/site, **open several apps with one button**, a live **clock** right on the pad, or just a color.
-- 🎥 **OBS Studio** — switch scene, start/stop recording, go live, pause, mute a source, replay, virtual camera (via obs-websocket).
+- 🎥 **OBS Studio & Streamlabs Desktop** — switch scene (by number or name), start/stop recording, go live, mute a source, replay, virtual camera. Pick the app (Auto / OBS / Streamlabs) and a **“Test connection”** button.
+- 🎛 **Ready-made profiles** out of the box — **Work**, **Games**, **Stream (OBS)**.
 - Colors and labels, live press animations on the pad itself.
 
 ### 🖥 App
 - **Editor ⇄ Preview** — the on-screen grid mirrors the pad in real time; the edges carry light-control buttons with descriptions.
 - 🗂 **Layout profiles** — different button sets (gaming, streaming, work), switch instantly.
 - 🌍 **6 languages**: Русский, English, Українська, Deutsch, Español, Français — one-button switch.
-- 🚀 **Autostart** with Windows — finds the pad and restores your last config.
-- 💾 Export/import layouts, a built-in **tutorial** (17 steps), smooth start and close animations.
+- 📥 **Minimize to tray** — closing the window hides it to the tray (off the taskbar) while the pad keeps running.
+- 🔔 **Auto update check** — the app compares its version with GitHub and shows a banner with a download link; your settings survive updates.
+- 🚀 **Autostart** with Windows — finds the pad and restores your last config, **and re-points itself to the new version** after an update.
+- 💎 **Support the project** — tip in TON right from the app.
+- 💾 Export/import layouts, a built-in **tutorial**, smooth start and close animations.
 
 ---
 
@@ -102,10 +106,11 @@ Hit **“Start show”** and the pad comes alive to your PC audio. It reacts by 
 
 </div>
 
-- **60+ generative modes**: spectrum, drums, hi-hats, characters (🐍 snake, 🕺 dancer, 👾 alien, 🤖 robot), fireworks, kaleidoscope, plasma, tunnels and more.
+- **69 generative modes**: spectrum, drums, hi-hats, characters (🐍 snake, 🕺 dancer, 👾 alien, 🤖 robot), fireworks, kaleidoscope, plasma, tunnels, lava, snowfall, radar, waterfall, heartbeat and more.
+- **The side & top buttons continue the current mode** — they pick up the active effect’s colors along the edges (part of the show, not a static glow), while the 8×8 grid stays the main canvas. Adapts to the device: Mini uses the top row + right column, Pro lights the whole ring.
+- **Separate bass and hi-hat sensitivity** + brightness — sliders in the app **and right on the pad** (right column / top row).
 - **Drop detection**, a calm idle mode with easter eggs.
 - **Your own effects** — a plugins folder: write a `.py` with an effect class in Python and it shows up in the scene list.
-- Sensitivity and brightness adjust **right from the pad** (right column / top row).
 
 ---
 
@@ -137,7 +142,7 @@ Each pad can be given an action **type** and a **parameter**. Here are all the t
 |---|---|---|
 | 🎵 Media/volume | play-pause, track, sound | `playpause` · `next` · `prev` · `volup` · `voldown` · `mute` · `stop` |
 | 🔊 App volume | volume of one app | `spotify:up` · `discord:mute` · `chrome:set:30` |
-| 🎥 OBS Studio | control OBS | `scene:Game` · `record` · `stream` · `mute:Mic/Aux` · `replay` · `virtualcam` |
+| 🎥 OBS / Streamlabs | control OBS Studio or Streamlabs | `scene:1` · `scene:Game` · `record` · `stream` · `mute:Mic/Aux` · `replay` · `virtualcam` |
 | 🎙 Mic / Sound | system mic mute | — |
 | 🎆 Light show | toggle the show | — |
 | 🕐 Clock | time scrolling on the pad | — |
@@ -215,24 +220,32 @@ Steal the idea — assign pads like this for your scenario.
 
 ---
 
-## 🎥 OBS setup
+## 🎥 OBS / Streamlabs setup
+
+**Both** apps are supported. In the app: **More → OBS / Streamlabs** — pick the app (Auto / OBS Studio / Streamlabs Desktop) and hit **“Test connection”**.
 
 <details>
-<summary><b>Step by step — connect OBS to the deck</b></summary>
+<summary><b>OBS Studio — step by step</b></summary>
 
-1. In **OBS Studio** open **Tools → obs-websocket settings** (WebSocket Server Settings).
+1. In **OBS Studio** open **Tools → WebSocket Server Settings**.
 2. Enable **Enable WebSocket server**. Default port is `4455`.
-3. If **Enable Authentication** is on — copy the password (**Show Connect Info**).
-4. In **Launchpad Deck** → the **More → OBS** card — paste that password and save.
-5. Assign pads with the **OBS Studio** action type:
-   - switch scene — `scene:ExactSceneName`
-   - record — `record`, go live — `stream`, pause — `pause`
-   - mute a source — `mute:ExactSourceName`
-   - replay — `replay`, virtual camera — `virtualcam`
-
-> ⚠️ Scene and source names must **exactly** match what’s in OBS (case and spaces included).
+3. If authentication is on — copy the password and paste it into **Launchpad Deck → More → OBS / Streamlabs**.
+4. Assign pads with the **OBS / Streamlabs** action type (see parameters below).
 
 </details>
+
+<details>
+<summary><b>Streamlabs Desktop — step by step</b></summary>
+
+1. Just keep **Streamlabs Desktop** running — no extra setup needed.
+2. If Streamlabs runs **as administrator**, run **Launchpad Deck** as administrator too (otherwise it can’t reach it).
+3. Hit **“Test connection”** — the app shows your scenes and writes a `streamlabs_report.txt` file listing your scene and audio-source names.
+
+</details>
+
+**Parameters (for both):** scene — `scene:1` (by number) or `scene:Name`; record — `record`, go live — `stream`; mute a source — `mute:Mic/Aux` (or `mute:1`); replay — `replay` (needs the Replay Buffer enabled); virtual camera — `virtualcam`.
+
+> 💡 Switching scenes **by number** (`scene:1`, `scene:2`…) works regardless of your scene names.
 
 ---
 
@@ -240,8 +253,10 @@ Steal the idea — assign pads like this for your scenario.
 
 - **Profiles** — keep separate layouts for “Stream”, “Games”, “Work” and switch instantly. Create, rename, delete, export/import — in the profiles card.
 - **Languages** — 🇷🇺 🇬🇧 🇺🇦 🇩🇪 🇪🇸 🇫🇷, one-button switch; the whole UI and the tutorial are translated.
-- **Autostart** — tick the box and the deck launches with Windows, finds the pad and restores the last profile.
-- **Tutorial** — a built-in 17-step guide walks you through every feature.
+- **Autostart** — tick the box and the deck launches with Windows, finds the pad and restores the last profile. After an update it **re-points itself to the new version** you launched.
+- **Tray** — closing the window minimizes it to the system tray (off the taskbar) while the deck keeps running; click the icon to bring it back.
+- **Updates** — the app checks GitHub for the latest version and shows a banner when a new one is out. Settings and profiles survive updates.
+- **Tutorial** — a built-in guide walks you through every feature.
 
 ---
 

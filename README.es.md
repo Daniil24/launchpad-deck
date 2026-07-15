@@ -53,8 +53,8 @@
 
 **Launchpad Deck** convierte tu pad luminoso Novation en dos cosas a la vez:
 
-- 🎛 **Deck de macros** (como un Stream Deck) — asigna a los botones el lanzamiento de apps, medios y volumen, silenciar el micro (funciona en Discord), bloquear el PC, atajos de teclado, control de **OBS** y mucho más.
-- 🎆 **Show de luces** — el pad reacciona al audio del PC: el bajo golpea, los hi-hats brillan, los drops estallan. **60+** escenas con animaciones y personajes.
+- 🎛 **Deck de macros** (como un Stream Deck) — asigna a los botones el lanzamiento de apps, medios y volumen, silenciar el micro (funciona en Discord), bloquear el PC, atajos de teclado, control de **OBS Studio y Streamlabs** y mucho más.
+- 🎆 **Show de luces** — el pad reacciona al audio del PC: el bajo golpea, los hi-hats brillan, los drops estallan. **69** escenas con animaciones y personajes, y los botones laterales también brillan al ritmo.
 
 Todo en una ventana, un `.exe` — **no** hay que instalar Python ni librerías. Sin suscripción. Sin nube. Funciona sin conexión.
 
@@ -80,15 +80,19 @@ Todo en una ventana, un `.exe` — **no** hay que instalar Python ni librerías.
 
 ### 🎛 Deck de macros
 - Programa **cada pad**: lanzar apps, medios (play/pausa/pista), volumen — **general y por app** (`spotify:up`, `discord:mute`, `chrome:set:30`), **silencio de micro del sistema** (silencia en todas partes, incluido Discord), **bloquear el PC**, captura de pantalla, abrir un archivo/sitio, **varias apps con un botón**, un **reloj** en marcha en el propio pad o simplemente un color.
-- 🎥 **OBS Studio** — cambiar de escena, iniciar/detener grabación, salir en directo, pausa, silenciar una fuente, repetición, cámara virtual (vía obs-websocket).
+- 🎥 **OBS Studio y Streamlabs Desktop** — cambiar de escena (por número o nombre), iniciar/detener grabación, salir en directo, silenciar una fuente, repetición, cámara virtual. Elige el programa (Auto / OBS / Streamlabs) y un botón **«Probar conexión»**.
+- 🎛 **Perfiles listos** de fábrica — **Trabajo**, **Juegos**, **Directo (OBS)**.
 - Colores y etiquetas, animaciones vivas al pulsar en el propio pad.
 
 ### 🖥 App
 - **Editor ⇄ Vista previa** — la cuadrícula en pantalla refleja el pad en tiempo real; en los bordes hay botones de control de luz con descripción.
 - 🗂 **Perfiles de disposición** — distintos juegos de botones (juegos, streaming, trabajo), cambio instantáneo.
 - 🌍 **6 idiomas**: Русский, English, Українська, Deutsch, Español, Français — cambio con un botón.
-- 🚀 **Autoarranque** con Windows — encuentra el pad y restaura tu última configuración.
-- 💾 Exportar/importar disposiciones, **tutorial** integrado (17 pasos), animaciones suaves de inicio y cierre.
+- 📥 **Minimizar a la bandeja** — al cerrar, la ventana se oculta en la bandeja (fuera de la barra de tareas) y el pad sigue funcionando.
+- 🔔 **Comprobación automática de actualizaciones** — la app compara su versión con GitHub y muestra un aviso con enlace de descarga; los ajustes se conservan al actualizar.
+- 🚀 **Autoarranque** con Windows — encuentra el pad y restaura tu última configuración, **y pasa solo a la nueva versión** tras una actualización.
+- 💎 **Apoyar el proyecto** — dona en TON desde la propia app.
+- 💾 Exportar/importar disposiciones, **tutorial** integrado, animaciones suaves de inicio y cierre.
 
 ---
 
@@ -102,10 +106,11 @@ Pulsa **«Iniciar show»** y el pad cobra vida con el audio de tu PC. Reacciona 
 
 </div>
 
-- **60+ modos generativos**: espectro, batería, hi-hats, personajes (🐍 serpiente, 🕺 bailarín, 👾 alien, 🤖 robot), fuegos artificiales, caleidoscopio, plasma, túneles y más.
+- **69 modos generativos**: espectro, batería, hi-hats, personajes (🐍 serpiente, 🕺 bailarín, 👾 alien, 🤖 robot), fuegos artificiales, caleidoscopio, plasma, túneles, lava, nevada, radar, cascada, latido y más.
+- **Los botones laterales y superiores continúan el modo actual** — toman los colores del efecto activo en los bordes (parte del show, no un brillo estático), y la cuadrícula 8×8 sigue siendo el lienzo principal. Se adapta al dispositivo: Mini usa la fila superior + columna derecha, Pro ilumina todo el anillo.
+- **Sensibilidad separada de graves y hi-hats** + brillo — con deslizadores en la app **y desde el propio pad** (columna derecha / fila superior).
 - **Detección de drops**, un modo de reposo tranquilo con sorpresas.
 - **Tus propios efectos** — una carpeta de plugins: escribe un `.py` con una clase de efecto en Python y aparece en la lista de escenas.
-- La sensibilidad y el brillo se ajustan **desde el propio pad** (columna derecha / fila superior).
 
 ---
 
@@ -137,7 +142,7 @@ A cada pad se le puede dar un **tipo** de acción y un **parámetro**. Estos son
 |---|---|---|
 | 🎵 Medios/volumen | play-pausa, pista, sonido | `playpause` · `next` · `prev` · `volup` · `voldown` · `mute` · `stop` |
 | 🔊 Volumen de app | volumen de una app | `spotify:up` · `discord:mute` · `chrome:set:30` |
-| 🎥 OBS Studio | controlar OBS | `scene:Juego` · `record` · `stream` · `mute:Micrófono` · `replay` · `virtualcam` |
+| 🎥 OBS / Streamlabs | controlar OBS Studio o Streamlabs | `scene:1` · `scene:Juego` · `record` · `stream` · `mute:Micrófono` · `replay` · `virtualcam` |
 | 🎙 Micro / Sonido | silencio de micro del sistema | — |
 | 🎆 Show de luces | activar/desactivar el show | — |
 | 🕐 Reloj | hora en marquesina en el pad | — |
@@ -215,24 +220,32 @@ Copia la idea — asigna los pads así según tu escenario.
 
 ---
 
-## 🎥 Configurar OBS
+## 🎥 Configurar OBS / Streamlabs
+
+Se admiten **ambos** programas. En la app: **Más → OBS / Streamlabs** — elige el programa (Auto / OBS Studio / Streamlabs Desktop) y pulsa **«Probar conexión»**.
 
 <details>
-<summary><b>Paso a paso — conectar OBS al deck</b></summary>
+<summary><b>OBS Studio — paso a paso</b></summary>
 
-1. En **OBS Studio** abre **Herramientas → ajustes de obs-websocket** (WebSocket Server Settings).
-2. Activa **Enable WebSocket server**. El puerto por defecto es `4455`.
-3. Si está marcado **Enable Authentication** — copia la contraseña (**Show Connect Info**).
-4. En **Launchpad Deck** → la tarjeta **Más → OBS** — pega esa contraseña y guarda.
-5. Asigna a los pads acciones del tipo **OBS Studio**:
-   - cambiar de escena — `scene:NombreExactoDeEscena`
-   - grabar — `record`, directo — `stream`, pausa — `pause`
-   - silenciar una fuente — `mute:NombreExactoDeFuente`
-   - repetición — `replay`, cámara virtual — `virtualcam`
-
-> ⚠️ Los nombres de escenas y fuentes deben coincidir **exactamente** con los de OBS (mayúsculas y espacios incluidos).
+1. En **OBS Studio** abre **Herramientas → Configuración del servidor WebSocket**.
+2. Activa **«Activar servidor WebSocket»**. El puerto por defecto es `4455`.
+3. Si la autenticación está activa — copia la contraseña y pégala en **Launchpad Deck → Más → OBS / Streamlabs**.
+4. Asigna a los pads acciones del tipo **OBS / Streamlabs** (parámetros abajo).
 
 </details>
+
+<details>
+<summary><b>Streamlabs Desktop — paso a paso</b></summary>
+
+1. Solo mantén **Streamlabs Desktop** abierto — no hace falta configuración extra.
+2. Si Streamlabs se ejecuta **como administrador**, ejecuta **Launchpad Deck** también como administrador.
+3. Pulsa **«Probar conexión»** — la app muestra tus escenas y escribe un archivo `streamlabs_report.txt` con los nombres de tus escenas y fuentes de audio.
+
+</details>
+
+**Parámetros (para ambos):** escena — `scene:1` (por número) o `scene:Nombre`; grabar — `record`, directo — `stream`; silenciar una fuente — `mute:Micrófono` (o `mute:1`); repetición — `replay` (requiere el Replay Buffer activo); cámara virtual — `virtualcam`.
+
+> 💡 Cambiar de escena **por número** (`scene:1`, `scene:2`…) funciona sin depender de los nombres de tus escenas.
 
 ---
 
@@ -240,8 +253,10 @@ Copia la idea — asigna los pads así según tu escenario.
 
 - **Perfiles** — mantén disposiciones separadas para «Stream», «Juegos», «Trabajo» y cambia al instante. Crear, renombrar, eliminar, exportar/importar — en la tarjeta de perfiles.
 - **Idiomas** — 🇷🇺 🇬🇧 🇺🇦 🇩🇪 🇪🇸 🇫🇷, cambio con un botón; toda la interfaz y el tutorial están traducidos.
-- **Autoarranque** — marca la casilla y el deck arranca con Windows, encuentra el pad y restaura el último perfil.
-- **Tutorial** — una guía integrada de 17 pasos te lleva por todas las funciones.
+- **Autoarranque** — marca la casilla y el deck arranca con Windows, encuentra el pad y restaura el último perfil. Tras una actualización, el autoarranque **pasa solo a la nueva versión** que ejecutaste.
+- **Bandeja** — al cerrar, la ventana se minimiza a la bandeja del sistema (fuera de la barra de tareas) y el deck sigue funcionando; haz clic en el icono para recuperarla.
+- **Actualizaciones** — la app comprueba en GitHub la última versión y muestra un aviso cuando hay una nueva. Los ajustes y perfiles se conservan.
+- **Tutorial** — una guía integrada te lleva por todas las funciones.
 
 ---
 

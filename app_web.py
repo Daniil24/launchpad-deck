@@ -41,7 +41,7 @@ AUTO_LNK = os.path.join(STARTUP, "Launchpad Deck.lnk")
 CREATE_NO_WINDOW = 0x08000000
 N = 8
 
-VERSION = "1.5"
+VERSION = "1.6"
 GITHUB_REPO = "Daniil24/launchpad-deck"
 TON_ADDRESS = "UQAK1sIJqPVn9ND8JTOEUlrBFyAiVU0j6IiiXczTM7YmX4CB"
 TON_LINK = "https://app.tonkeeper.com/transfer/" + TON_ADDRESS
