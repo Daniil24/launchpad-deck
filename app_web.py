@@ -24,9 +24,11 @@ except Exception:
 # ---------------------------------------------------------------- paths
 if getattr(sys, "frozen", False):
     HERE = os.path.dirname(sys.executable)
+    RES = sys._MEIPASS                     # bundled assets (web/, deck_icon.png/.ico) live here
     WEB = os.path.join(sys._MEIPASS, "web")
 else:
     HERE = os.path.dirname(os.path.abspath(__file__))
+    RES = HERE
     WEB = os.path.join(HERE, "web")
 PYW = os.path.join(HERE, ".venv", "Scripts", "pythonw.exe")
 CONFIG = D.CONFIG
@@ -39,7 +41,7 @@ AUTO_LNK = os.path.join(STARTUP, "Launchpad Deck.lnk")
 CREATE_NO_WINDOW = 0x08000000
 N = 8
 
-VERSION = "1.2"
+VERSION = "1.3"
 GITHUB_REPO = "Daniil24/launchpad-deck"
 TON_ADDRESS = "UQAK1sIJqPVn9ND8JTOEUlrBFyAiVU0j6IiiXczTM7YmX4CB"
 TON_LINK = "https://app.tonkeeper.com/transfer/" + TON_ADDRESS
@@ -386,6 +388,10 @@ class Api:
         # called from the page's poll loop (API context) when the tray asked to show
         _want_show[0] = False
         try:
+            MAIN[0].show()
+        except Exception:
+            pass
+        try:
             self._center(680, 860, MAIN[0])
         except Exception:
             pass
@@ -596,12 +602,14 @@ def _poller():
 
 def _tray_image():
     from PIL import Image
-    try:
-        p = os.path.join(HERE, "deck_icon.png")
-        if os.path.exists(p):
-            return Image.open(p).convert("RGBA").resize((64, 64))
-    except Exception:
-        pass
+    for name in ("deck_icon.png", "icon.png"):
+        for base in (RES, HERE):
+            try:
+                p = os.path.join(base, name)
+                if os.path.exists(p):
+                    return Image.open(p).convert("RGBA").resize((64, 64))
+            except Exception:
+                pass
     return Image.new("RGBA", (64, 64), (124, 92, 255, 255))
 
 
@@ -619,7 +627,10 @@ def build_tray(api):
         api.toggle_light()
 
     def show(icon, item):
-        _want_show[0] = True
+        try:
+            MAIN[0].show()           # bring back from tray (works from the pystray thread on edgechromium)
+        except Exception:
+            _want_show[0] = True     # fallback: the page's poll loop calls api.show_main()
 
     def quit_(icon, item):
         try:
@@ -659,9 +670,12 @@ def main():
             return True
         if TRAY[0] is not None:      # minimize to tray (engine keeps running) — no bloom, no exit
             try:
-                MAIN[0].move(-3000, -3000)
+                MAIN[0].hide()       # fully hide -> disappears from the taskbar
             except Exception:
-                pass
+                try:
+                    MAIN[0].move(-3000, -3000)
+                except Exception:
+                    pass
             if not _min_notified[0]:
                 _min_notified[0] = True
                 try:
@@ -701,7 +715,9 @@ def main():
         except Exception:
             TRAY[0] = None
 
-    ico = os.path.join(HERE, "deck_icon.ico")
+    ico = os.path.join(RES, "deck_icon.ico")
+    if not os.path.exists(ico):
+        ico = os.path.join(HERE, "deck_icon.ico")
     kw = {"gui": "edgechromium"}
     if os.path.exists(ico):
         kw["icon"] = ico
