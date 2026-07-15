@@ -39,6 +39,61 @@ AUTO_LNK = os.path.join(STARTUP, "Launchpad Deck.lnk")
 CREATE_NO_WINDOW = 0x08000000
 N = 8
 
+VERSION = "1.1"
+GITHUB_REPO = "Daniil24/launchpad-deck"
+TON_ADDRESS = "UQAK1sIJqPVn9ND8JTOEUlrBFyAiVU0j6IiiXczTM7YmX4CB"
+TON_LINK = "https://app.tonkeeper.com/transfer/" + TON_ADDRESS
+_update = [None]   # {version, url} if a newer release exists
+
+# ready-made layout profiles (seeded on first run; not overwritten)
+LP_PRESETS = {
+    "Работа": {
+        "0,7": {"label": "Prev", "color": "blue", "type": "media", "param": "prev"},
+        "1,7": {"label": "Play/Pause", "color": "green", "type": "media", "param": "playpause"},
+        "2,7": {"label": "Next", "color": "blue", "type": "media", "param": "next"},
+        "4,7": {"label": "Vol -", "color": "orange", "type": "media", "param": "voldown"},
+        "5,7": {"label": "Vol +", "color": "orange", "type": "media", "param": "volup"},
+        "7,7": {"label": "Mute", "color": "red", "type": "media", "param": "mute"},
+        "0,5": {"label": "Chrome", "color": "orange", "type": "app", "param": "chrome"},
+        "1,5": {"label": "Telegram", "color": "cyan", "type": "app", "param": "telegram"},
+        "2,5": {"label": "Spotify", "color": "spotify", "type": "app", "param": "spotify"},
+        "3,5": {"label": "Discord", "color": "discord", "type": "app", "param": "discord"},
+        "0,4": {"label": "Рабочий набор", "color": "purple", "type": "multi", "param": "chrome;telegram;spotify"},
+        "0,0": {"label": "Часы", "color": "cyan", "type": "clock", "param": ""},
+        "1,0": {"label": "Скриншот", "color": "pink", "type": "hotkey", "param": "win+shift+s"},
+        "2,0": {"label": "Блок ПК", "color": "yellow", "type": "lock", "param": ""},
+        "7,0": {"label": "Свет", "color": "purple", "type": "lightshow", "param": ""},
+    },
+    "Игры": {
+        "0,7": {"label": "Prev", "color": "blue", "type": "media", "param": "prev"},
+        "1,7": {"label": "Play/Pause", "color": "green", "type": "media", "param": "playpause"},
+        "2,7": {"label": "Next", "color": "blue", "type": "media", "param": "next"},
+        "4,7": {"label": "Vol -", "color": "orange", "type": "media", "param": "voldown"},
+        "5,7": {"label": "Vol +", "color": "orange", "type": "media", "param": "volup"},
+        "0,5": {"label": "Discord", "color": "discord", "type": "app", "param": "discord"},
+        "1,5": {"label": "Spotify", "color": "spotify", "type": "app", "param": "spotify"},
+        "2,5": {"label": "SteelSeries", "color": "orange", "type": "app", "param": "steelseries"},
+        "3,5": {"label": "Мут Discord", "color": "red", "type": "appvol", "param": "discord:mute"},
+        "0,0": {"label": "Мут микро", "color": "red", "type": "sysmute", "param": ""},
+        "1,0": {"label": "Скриншот", "color": "pink", "type": "hotkey", "param": "win+shift+s"},
+        "2,0": {"label": "Блок ПК", "color": "yellow", "type": "lock", "param": ""},
+        "7,0": {"label": "Свет", "color": "purple", "type": "lightshow", "param": ""},
+    },
+    "Стрим (OBS)": {
+        "0,7": {"label": "Сцена 1", "color": "purple", "type": "obs", "param": "scene:Scene 1"},
+        "1,7": {"label": "Сцена 2", "color": "purple", "type": "obs", "param": "scene:Scene 2"},
+        "3,7": {"label": "Запись", "color": "red", "type": "obs", "param": "record"},
+        "4,7": {"label": "Эфир", "color": "red", "type": "obs", "param": "stream"},
+        "5,7": {"label": "Повтор", "color": "orange", "type": "obs", "param": "replay"},
+        "6,7": {"label": "Вирт-камера", "color": "cyan", "type": "obs", "param": "virtualcam"},
+        "0,5": {"label": "Мут источника", "color": "red", "type": "obs", "param": "mute:Mic/Aux"},
+        "1,5": {"label": "Мут микро", "color": "red", "type": "sysmute", "param": ""},
+        "2,5": {"label": "Пауза", "color": "yellow", "type": "obs", "param": "pause"},
+        "0,0": {"label": "Свет", "color": "purple", "type": "lightshow", "param": ""},
+        "1,0": {"label": "Часы", "color": "cyan", "type": "clock", "param": ""},
+    },
+}
+
 # ---------------------------------------------------------------- metadata (reused from the engine)
 COLOR_NAMES = [n for n in D.C if n not in ("off", "white")]
 C_HEX = {n: "#%02x%02x%02x" % (min(255, r * 2), min(255, g * 2), min(255, b * 2))
@@ -106,7 +161,8 @@ i18n.set_current(load_settings().get("lang", "ru"))
 layout = D.load_layout()
 _s = load_settings()
 light_ui = {"sens": float(_s.get("sens", 1.85)), "gain": float(_s.get("gain", 1.25)),
-            "bright": float(_s.get("bright", 1.0))}
+            "bright": float(_s.get("bright", 1.0)),
+            "bass": float(_s.get("bass", 1.0)), "treble": float(_s.get("treble", 1.0))}
 engine = None
 want_running = False
 last_attempt = 0.0
@@ -115,6 +171,9 @@ SPL = [None]         # the frameless splash/closing window
 _mode = ["in"]       # 'in' = startup bloom, 'out' = closing bloom
 _want_close = [False]
 _splash_done = [False]
+TRAY = [None]          # pystray icon (minimize-to-tray)
+_want_show = [False]   # tray -> "show window" request (applied from JS/API context)
+_min_notified = [False]
 
 
 def save_config():
@@ -172,6 +231,47 @@ def ensure_profiles():
     os.makedirs(PROF_DIR, exist_ok=True)
     if not list_profiles():
         save_profile(active_profile())
+    # seed ready-made profiles (Work / Games / OBS) — don't overwrite user edits
+    for name, lay in LP_PRESETS.items():
+        p = _prof_path(name)
+        if not os.path.exists(p):
+            try:
+                with open(p, "w", encoding="utf-8") as f:
+                    json.dump(lay, f, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
+
+
+def _newer(a, b):
+    def parse(s):
+        out = []
+        for part in str(s).split("."):
+            num = ""
+            for ch in part:
+                if ch.isdigit():
+                    num += ch
+                else:
+                    break
+            out.append(int(num) if num else 0)
+        return out
+    pa, pb = parse(a), parse(b)
+    n = max(len(pa), len(pb)); pa += [0] * (n - len(pa)); pb += [0] * (n - len(pb))
+    return pa > pb
+
+
+def _check_update():
+    try:
+        import urllib.request
+        url = "https://api.github.com/repos/%s/releases/latest" % GITHUB_REPO
+        req = urllib.request.Request(url, headers={"User-Agent": "LaunchpadDeck"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        tag = (data.get("tag_name") or "").lstrip("vV")
+        if tag and _newer(tag, VERSION):
+            _update[0] = {"version": tag,
+                          "url": data.get("html_url") or "https://github.com/%s/releases/latest" % GITHUB_REPO}
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------- plugins
@@ -227,7 +327,9 @@ def set_autostart(enable):
 def _strings():
     keys = ["subtitle", "tutorial_btn", "st_running", "st_searching", "st_stopped", "start", "restart",
             "stop", "light_toggle", "light_hint", "editor", "preview", "editor_hint", "preview_hint",
-            "light_settings", "sens", "gain", "bright", "light_settings_hint", "autostart",
+            "light_settings", "sens", "gain", "bright", "bass", "treble", "light_settings_hint",
+            "sup_title", "sup_desc", "copy", "copied", "send_ton", "upd_text", "download", "later",
+            "ver_label", "autostart",
             "autostart_switch", "autostart_hint", "layout", "export", "import", "language",
             "tutorial_section", "tutorial_again", "rights_badge", "author_name", "author_rights",
             "tg_btn", "mail_btn", "dlg_sub", "f_name", "f_color", "f_type", "f_param", "browse", "save",
@@ -263,13 +365,27 @@ class Api:
             # Launchpad Pro extra outer buttons (assignable macros), keyed "o<sysex-index>"
             "pro_bottom": ["o%d" % i for i in range(1, 9)],            # bottom row, left -> right
             "pro_left": ["o%d" % (i * 10) for i in range(8, 0, -1)],   # left column, top -> bottom
+            "version": VERSION, "ton_address": TON_ADDRESS, "ton_link": TON_LINK,
             "s": _strings(),
         }
+
+    def update_info(self):
+        return _update[0]
 
     def state(self):
         return {"running": is_running(), "want": want_running, "layout": layout,
                 "light": light_ui, "profiles": list_profiles(), "active": active_profile(),
-                "autostart": os.path.exists(AUTO_LNK)}
+                "autostart": os.path.exists(AUTO_LNK),
+                "show_req": _want_show[0], "update": _update[0]}
+
+    def show_main(self):
+        # called from the page's poll loop (API context) when the tray asked to show
+        _want_show[0] = False
+        try:
+            self._center(680, 860, MAIN[0])
+        except Exception:
+            pass
+        return True
 
     def start(self):
         global want_running
@@ -451,6 +567,52 @@ def _poller():
         time.sleep(1.0)
 
 
+def _tray_image():
+    from PIL import Image
+    try:
+        p = os.path.join(HERE, "deck_icon.png")
+        if os.path.exists(p):
+            return Image.open(p).convert("RGBA").resize((64, 64))
+    except Exception:
+        pass
+    return Image.new("RGBA", (64, 64), (124, 92, 255, 255))
+
+
+def build_tray(api):
+    import pystray
+    from pystray import Menu, MenuItem
+
+    def run_text(item):
+        return "■  Остановить" if want_running else "▶  Запустить"
+
+    def toggle_run(icon, item):
+        api.stop() if want_running else api.start()
+
+    def toggle_light(icon, item):
+        api.toggle_light()
+
+    def show(icon, item):
+        _want_show[0] = True
+
+    def quit_(icon, item):
+        try:
+            _stop_engine()
+        except Exception:
+            pass
+        os._exit(0)
+
+    menu = Menu(
+        MenuItem("Launchpad Deck", show, default=True),
+        Menu.SEPARATOR,
+        MenuItem(run_text, toggle_run),
+        MenuItem("Свето-музыка", toggle_light),
+        Menu.SEPARATOR,
+        MenuItem("Показать окно", show),
+        MenuItem("Выход", quit_),
+    )
+    return pystray.Icon("launchpad_deck", _tray_image(), "Launchpad Deck", menu)
+
+
 def main():
     ensure_profiles(); ensure_plugins()
     api = Api()
@@ -464,10 +626,23 @@ def main():
                                    easy_drag=False, resizable=False, on_top=True,
                                    background_color="#0b0b11")
 
-    def on_closing():                # X on the main window -> play the closing bloom, then exit
+    def on_closing():                # X on the main window
         global want_running
         if _want_close[0]:
             return True
+        if TRAY[0] is not None:      # minimize to tray (engine keeps running) — no bloom, no exit
+            try:
+                MAIN[0].move(-3000, -3000)
+            except Exception:
+                pass
+            if not _min_notified[0]:
+                _min_notified[0] = True
+                try:
+                    TRAY[0].notify("Свёрнуто в трей. Управление — по клику на иконке.", "Launchpad Deck")
+                except Exception:
+                    pass
+            return False
+        # no tray -> play the closing bloom, then exit
         _want_close[0] = True
         want_running = False
         _mode[0] = "out"
@@ -492,6 +667,12 @@ def main():
         want_running = True
         _spawn()
         threading.Thread(target=_poller, daemon=True).start()
+        threading.Thread(target=_check_update, daemon=True).start()
+        try:
+            TRAY[0] = build_tray(api)
+            TRAY[0].run_detached()
+        except Exception:
+            TRAY[0] = None
 
     ico = os.path.join(HERE, "deck_icon.ico")
     kw = {"gui": "edgechromium"}
